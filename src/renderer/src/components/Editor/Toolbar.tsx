@@ -15,7 +15,7 @@ export default function Toolbar({ fileName, dirty }: Props): JSX.Element {
 
   const handleExport = async (format: 'html' | 'pdf'): Promise<void> => {
     const saved = await exportActive(format)
-    if (saved) window.alert(`Exportado para:\n${saved}`)
+    if (saved) await window.api.confirm(`Exportado para:\n${saved}`)
   }
 
   return (

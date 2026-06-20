@@ -31,6 +31,10 @@ const api = {
   // busca
   search: (vaultId: string, query: string) => ipcRenderer.invoke('search:run', vaultId, query),
 
+  // dialogs nativos
+  confirm: (message: string) => ipcRenderer.invoke('dialog:confirm', message),
+  showError: (message: string) => ipcRenderer.invoke('dialog:error', message),
+
   // export
   exportHtml: (vaultId: string, relPath: string, markdown: string) =>
     ipcRenderer.invoke('export:html', vaultId, relPath, markdown),

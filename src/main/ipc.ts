@@ -61,6 +61,21 @@ export function registerIpc(): void {
   // ---- busca ----
   ipcMain.handle('search:run', (_e, vaultId: string, query: string) => search(vaultId, query))
 
+  // ---- dialogs nativos ----
+  ipcMain.handle('dialog:confirm', async (_e, message: string) => {
+    const result = await dialog.showMessageBox({
+      type: 'question',
+      buttons: ['Cancelar', 'OK'],
+      defaultId: 1,
+      cancelId: 0,
+      message
+    })
+    return result.response === 1
+  })
+  ipcMain.handle('dialog:error', async (_e, message: string) => {
+    await dialog.showErrorBox('Erro', message)
+  })
+
   // ---- export ----
   ipcMain.handle('export:html', (_e, vaultId: string, relPath: string, markdown: string) =>
     exportHtml(vaultId, relPath, markdown)

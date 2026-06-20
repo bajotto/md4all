@@ -42,9 +42,9 @@ export default function VaultPicker(): JSX.Element {
           <span className="vault-path">{active.path}</span>
           <button
             className="link-btn"
-            onClick={() => {
-              if (window.confirm(`Remover o vault "${active.name}" da lista? (não apaga arquivos)`))
-                void removeVault(active.id)
+            onClick={async () => {
+              const ok = await window.api.confirm(`Remover o vault "${active.name}" da lista? (os arquivos não serão apagados)`)
+              if (ok) void removeVault(active.id)
             }}
           >
             remover
