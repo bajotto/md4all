@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useStore } from '../../store/useStore'
-import MilkdownCrepe from './MilkdownCrepe'
+import MilkdownCrepe, { type EditorApi } from './MilkdownCrepe'
 import CodeMirrorSource from './CodeMirrorSource'
+import FormatToolbar from './FormatToolbar'
 import Toolbar from './Toolbar'
 
 const AUTOSAVE_MS = 600
@@ -16,6 +17,7 @@ export default function Editor(): JSX.Element | null {
 
   const tab = tabs.find((t) => t.path === activePath)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const editorApi = useRef<EditorApi | null>(null)
 
   const scheduleSave = useCallback(
     (path: string) => {
@@ -59,6 +61,9 @@ export default function Editor(): JSX.Element | null {
   return (
     <div className="editor">
       <Toolbar fileName={tab.name} dirty={tab.dirty} />
+      {editorMode === 'wysiwyg' ? (
+        <FormatToolbar apiRef={editorApi} vaultId={activeVaultId} />
+      ) : null}
       <div className="editor-surface">
         {editorMode === 'wysiwyg' ? (
           <MilkdownCrepe
@@ -66,6 +71,7 @@ export default function Editor(): JSX.Element | null {
             vaultId={activeVaultId}
             initialContent={tab.content}
             onChange={handleChange}
+            apiRef={editorApi}
           />
         ) : (
           <CodeMirrorSource

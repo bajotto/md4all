@@ -1,14 +1,24 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, type MutableRefObject } from 'react'
 import { Crepe } from '@milkdown/crepe'
+import { editorViewCtx } from '@milkdown/kit/core'
+import { callCommand } from '@milkdown/kit/utils'
 import '@milkdown/crepe/theme/common/style.css'
 import '@milkdown/crepe/theme/frame.css'
 import { toDisplay, toStorage } from './assetPaths'
+
+/** API imperativa exposta pelo editor para a toolbar de formatação. */
+export interface EditorApi {
+  // dispara um comando Milkdown (ex.: toggleStrongCommand.key) com payload opcional
+  run: (key: unknown, payload?: unknown) => void
+  focus: () => void
+}
 
 interface Props {
   vaultId: string
   // conteúdo inicial em forma de armazenamento (caminhos de imagem relativos)
   initialContent: string
   onChange: (storageMarkdown: string) => void
+  apiRef?: MutableRefObject<EditorApi | null>
 }
 
 /**
@@ -16,7 +26,7 @@ interface Props {
  * Traz tabelas GFM editáveis, blocos de código com CodeMirror, listas de
  * tarefas, drag handles e upload de imagens. Recriado a cada arquivo via `key`.
  */
-export default function MilkdownCrepe({ vaultId, initialContent, onChange }: Props): JSX.Element {
+export default function MilkdownCrepe({ vaultId, initialContent, onChange, apiRef }: Props): JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null)
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
@@ -48,10 +58,22 @@ export default function MilkdownCrepe({ vaultId, initialContent, onChange }: Pro
       })
     })
 
-    void crepe.create()
+    void crepe.create().then(() => {
+      if (destroyed || !apiRef) return
+      const editor = crepe.editor
+      apiRef.current = {
+        run: (key, payload) => {
+          editor.action(callCommand(key as never, payload as never))
+        },
+        focus: () => {
+          editor.action((ctx) => ctx.get(editorViewCtx).focus())
+        }
+      }
+    })
 
     return () => {
       destroyed = true
+      if (apiRef) apiRef.current = null
       void crepe.destroy()
     }
     // initialContent intencionalmente fora das deps: o remount é controlado

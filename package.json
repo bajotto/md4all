@@ -33,14 +33,14 @@
       "node_modules/highlight.js/**",
       "node_modules/markdown-it/**"
     ],
+    "afterPack": "build/after-pack.js",
     "mac": {
       "icon": "build/icon.icns",
       "category": "public.app-category.productivity",
       "darkModeSupport": true,
-      "hardenedRuntime": true,
+      "hardenedRuntime": false,
       "gatekeeperAssess": false,
-      "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist",
+      "identity": null,
       "target": [
         {
           "target": "dmg",
