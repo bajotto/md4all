@@ -2,6 +2,7 @@ import { app, BrowserWindow, protocol, net } from 'electron'
 import { join } from 'path'
 import { pathToFileURL } from 'url'
 import { registerIpc } from './ipc'
+import { buildMenu } from './menu'
 import { getVault, isSftp, readAssetBinary, resolveInVault } from './vault'
 
 const PROTOCOL = 'md4all-asset'
@@ -69,6 +70,7 @@ function registerAssetProtocol(): void {
 app.whenReady().then(() => {
   registerAssetProtocol()
   registerIpc()
+  buildMenu()
   createWindow()
 
   app.on('activate', () => {

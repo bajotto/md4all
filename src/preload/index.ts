@@ -48,6 +48,15 @@ const api = {
   exportPdf: (vaultId: string, relPath: string, markdown: string) =>
     ipcRenderer.invoke('export:pdf', vaultId, relPath, markdown),
 
+  // comandos do menu nativo (find/replace)
+  onMenu: (cb: (cmd: string) => void) => {
+    const listener = (_e: unknown, cmd: string): void => cb(cmd)
+    ipcRenderer.on('menu:command', listener)
+    return () => {
+      ipcRenderer.removeListener('menu:command', listener)
+    }
+  },
+
   // eventos de filesystem externos
   onFsEvent: (cb: (payload: { type: string; path: string; vaultId: string }) => void) => {
     const listener = (_e: unknown, payload: { type: string; path: string; vaultId: string }) =>

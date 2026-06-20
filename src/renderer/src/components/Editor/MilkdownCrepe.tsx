@@ -2,15 +2,19 @@ import { useEffect, useRef, type MutableRefObject } from 'react'
 import { Crepe } from '@milkdown/crepe'
 import { editorViewCtx } from '@milkdown/kit/core'
 import { callCommand } from '@milkdown/kit/utils'
+import type { EditorView } from '@milkdown/kit/prose/view'
 import '@milkdown/crepe/theme/common/style.css'
 import '@milkdown/crepe/theme/frame.css'
 import { toDisplay, toStorage } from './assetPaths'
+import { createPmController, searchPlugin } from '../../editor/pmSearch'
+import type { SearchController } from '../../editor/search'
 
-/** API imperativa exposta pelo editor para a toolbar de formatação. */
+/** API imperativa exposta pelo editor para a toolbar de formatação e busca. */
 export interface EditorApi {
   // dispara um comando Milkdown (ex.: toggleStrongCommand.key) com payload opcional
   run: (key: unknown, payload?: unknown) => void
   focus: () => void
+  search: SearchController
 }
 
 interface Props {
@@ -75,13 +79,28 @@ export default function MilkdownCrepe({ vaultId, initialContent, onChange, apiRe
       }, 0)
       if (!apiRef) return
       const editor = crepe.editor
+      const getView = (): EditorView | null => {
+        try {
+          return editor.action((ctx) => ctx.get(editorViewCtx))
+        } catch {
+          return null
+        }
+      }
+      // injeta o plugin de busca na view já criada (reconfigure)
+      const view = getView()
+      if (view) {
+        view.updateState(
+          view.state.reconfigure({ plugins: view.state.plugins.concat(searchPlugin()) })
+        )
+      }
       apiRef.current = {
         run: (key, payload) => {
           editor.action(callCommand(key as never, payload as never))
         },
         focus: () => {
           editor.action((ctx) => ctx.get(editorViewCtx).focus())
-        }
+        },
+        search: createPmController(getView)
       }
     })
 

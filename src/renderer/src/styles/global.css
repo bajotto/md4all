@@ -455,6 +455,120 @@ button {
   background: var(--bg);
 }
 
+/* ---------- barra Find/Replace ---------- */
+.find-bar {
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elev);
+  padding: 6px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.find-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.find-toggle {
+  width: 20px;
+  border: none;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  font-size: 11px;
+}
+.find-input {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+}
+.find-count {
+  font-size: 12px;
+  color: var(--text-soft);
+  min-width: 42px;
+  text-align: center;
+}
+.find-btn {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  line-height: 1;
+}
+.find-btn:hover:not(:disabled) {
+  background: var(--hover);
+}
+.find-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.find-btn[data-on='true'] {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.find-close {
+  border: none;
+}
+.find-list {
+  min-width: 460px;
+  max-width: 70vw;
+}
+.find-list-items {
+  max-height: 50vh;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+.find-list-item {
+  display: flex;
+  gap: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.find-list-item:last-child {
+  border-bottom: none;
+}
+.find-list-item:hover {
+  background: var(--accent-soft);
+}
+.find-list-idx {
+  color: var(--accent);
+  font-weight: 600;
+  min-width: 44px;
+}
+.find-list-preview {
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* destaques das ocorrências */
+.cm-search-match {
+  background: rgba(255, 200, 0, 0.35);
+  border-radius: 2px;
+}
+.cm-search-current {
+  background: rgba(255, 150, 0, 0.7);
+}
+.pm-search-match {
+  background: rgba(255, 200, 0, 0.35);
+  border-radius: 2px;
+}
+.pm-search-match.current {
+  background: rgba(255, 150, 0, 0.7);
+}
+
 /* ---------- sidebar multi-raiz ---------- */
 .vault-actions {
   display: flex;
