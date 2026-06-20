@@ -25,7 +25,7 @@ function decryptSecret(enc?: string): string | undefined {
       return undefined
     }
   }
-  if (enc.startsWith('b64:')) return Buffer.from(enc.slice(4), 'utf8').toString('utf8')
+  if (enc.startsWith('b64:')) return Buffer.from(enc.slice(4), 'base64').toString('utf8')
   return enc
 }
 
@@ -89,16 +89,26 @@ async function withClient<T>(vault: Vault, fn: (c: SftpClient) => Promise<T>): P
 
 export async function testConnection(cfg: SftpConfig, rootPath: string): Promise<void> {
   const client = new SftpClient('md4all-test')
+  let connected = false
   try {
     await client.connect(await buildConnectOptions(cfg))
+    connected = true
     const target = rootPath || '.'
     const exists = await client.exists(target)
     if (!exists) throw new Error(`Pasta remota não encontrada: ${target}`)
   } finally {
-    try {
-      await client.end()
-    } catch {
-      /* ignora */
+    // só chama end() se a conexão foi estabelecida; se connect() falhou ele já
+    // chamou end() internamente, e uma segunda chamada pode travar aguardando
+    // um evento 'close' que já disparou.
+    if (connected) {
+      try {
+        await Promise.race([
+          client.end(),
+          new Promise<void>((r) => setTimeout(r, 3000))
+        ])
+      } catch {
+        /* ignora */
+      }
     }
   }
 }
