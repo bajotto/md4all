@@ -1,22 +1,26 @@
 import VaultPicker from './VaultPicker'
 import Search from './Search'
-import FileTree from './FileTree'
+import VaultRoot from './FileTree'
 import { useStore } from '../../store/useStore'
 
 export default function Sidebar(): JSX.Element {
-  const activeVaultId = useStore((s) => s.activeVaultId)
+  const vaults = useStore((s) => s.vaults)
 
   return (
     <aside className="sidebar">
       <div className="sidebar-header">md4all</div>
       <VaultPicker />
-      {activeVaultId ? (
+      {vaults.length === 0 ? (
+        <p className="sidebar-empty">Adicione um vault (local ou SSH) para começar.</p>
+      ) : (
         <>
           <Search />
-          <FileTree />
+          <div className="vault-roots">
+            {vaults.map((v) => (
+              <VaultRoot key={v.id} vault={v} />
+            ))}
+          </div>
         </>
-      ) : (
-        <p className="sidebar-empty">Adicione um vault para começar.</p>
       )}
     </aside>
   )

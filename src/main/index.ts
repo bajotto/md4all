@@ -2,7 +2,7 @@ import { app, BrowserWindow, protocol, net } from 'electron'
 import { join } from 'path'
 import { pathToFileURL } from 'url'
 import { registerIpc } from './ipc'
-import { resolveInVault } from './vault'
+import { getVault, isSftp, readAssetBinary, resolveInVault } from './vault'
 
 const PROTOCOL = 'md4all-asset'
 
@@ -47,11 +47,17 @@ function createWindow(): void {
  * path traversal por resolveInVault.
  */
 function registerAssetProtocol(): void {
-  protocol.handle(PROTOCOL, (request) => {
+  protocol.handle(PROTOCOL, async (request) => {
     try {
       const url = new URL(request.url)
       const vaultId = url.hostname
       const relPath = decodeURIComponent(url.pathname).replace(/^[/\\]+/, '')
+      const vault = getVault(vaultId)
+      if (isSftp(vault)) {
+        // baixa os bytes remotos e devolve como resposta
+        const buf = await readAssetBinary(vaultId, relPath)
+        return new Response(new Uint8Array(buf))
+      }
       const abs = resolveInVault(vaultId, relPath)
       return net.fetch(pathToFileURL(abs).toString())
     } catch {

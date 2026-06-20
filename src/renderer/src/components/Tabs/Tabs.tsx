@@ -1,8 +1,9 @@
 import { useStore } from '../../store/useStore'
+import { tabKey } from '../../types'
 
 export default function Tabs(): JSX.Element | null {
   const tabs = useStore((s) => s.tabs)
-  const activePath = useStore((s) => s.activePath)
+  const active = useStore((s) => s.active)
   const setActiveTab = useStore((s) => s.setActiveTab)
   const closeTab = useStore((s) => s.closeTab)
 
@@ -10,29 +11,32 @@ export default function Tabs(): JSX.Element | null {
 
   return (
     <div className="tabs">
-      {tabs.map((t) => (
-        <div
-          key={t.path}
-          className={`tab ${t.path === activePath ? 'active' : ''}`}
-          onClick={() => setActiveTab(t.path)}
-          title={t.path}
-        >
-          <span className="tab-name">
-            {t.name}
-            {t.dirty ? ' •' : ''}
-          </span>
-          <button
-            className="tab-close"
-            aria-label="Fechar aba"
-            onClick={(e) => {
-              e.stopPropagation()
-              closeTab(t.path)
-            }}
+      {tabs.map((t) => {
+        const isActive = active?.vaultId === t.vaultId && active?.path === t.path
+        return (
+          <div
+            key={tabKey(t.vaultId, t.path)}
+            className={`tab ${isActive ? 'active' : ''}`}
+            onClick={() => setActiveTab(t.vaultId, t.path)}
+            title={t.path}
           >
-            ×
-          </button>
-        </div>
-      ))}
+            <span className="tab-name">
+              {t.name}
+              {t.dirty ? ' •' : ''}
+            </span>
+            <button
+              className="tab-close"
+              aria-label="Fechar aba"
+              onClick={(e) => {
+                e.stopPropagation()
+                closeTab(t.vaultId, t.path)
+              }}
+            >
+              ×
+            </button>
+          </div>
+        )
+      })}
     </div>
   )
 }

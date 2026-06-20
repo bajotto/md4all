@@ -455,6 +455,132 @@ button {
   background: var(--bg);
 }
 
+/* ---------- sidebar multi-raiz ---------- */
+.vault-actions {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  align-items: center;
+}
+.add-vault-btn {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.add-vault-btn:hover {
+  background: var(--accent);
+  color: #fff;
+}
+.vault-roots {
+  flex: 1;
+  overflow-y: auto;
+}
+.vault-root {
+  border-bottom: 1px solid var(--border);
+}
+.vault-root-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-soft);
+  user-select: none;
+}
+.vault-root-header:hover {
+  background: var(--hover);
+}
+.vault-root-icon {
+  font-size: 13px;
+}
+.vault-root-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vault-root-header .tree-actions,
+.tree-row .tree-actions {
+  display: none;
+  gap: 2px;
+}
+.vault-root-header:hover .tree-actions,
+.tree-row:hover .tree-actions {
+  display: inline-flex;
+}
+.tree-actions button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  color: var(--text-soft);
+}
+.tree-actions button:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.vault-root-body {
+  padding-bottom: 4px;
+}
+
+/* ---------- campos SFTP no modal ---------- */
+.vault-mode.mode-toggle,
+.auth-toggle.mode-toggle {
+  display: flex;
+  width: 100%;
+}
+.vault-mode.mode-toggle button,
+.auth-toggle.mode-toggle button {
+  flex: 1;
+}
+.field-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.field-row .flex2 {
+  flex: 2;
+}
+.field-row .flex1 {
+  flex: 1;
+}
+.inline-btn {
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-elev);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.test-msg {
+  font-size: 12px;
+  align-self: center;
+}
+.test-msg.ok {
+  color: #2e9e5b;
+}
+.test-msg.err {
+  color: var(--danger);
+}
+.search-hit-vault {
+  color: var(--accent);
+  font-weight: 600;
+}
+
 /* ---------- modal adicionar vault ---------- */
 .modal-box.add-vault {
   min-width: 420px;

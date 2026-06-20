@@ -32,7 +32,10 @@
       "node_modules/chokidar/**",
       "node_modules/electron-store/**",
       "node_modules/highlight.js/**",
-      "node_modules/markdown-it/**"
+      "node_modules/markdown-it/**",
+      "node_modules/ssh2/**",
+      "node_modules/ssh2-sftp-client/**",
+      "node_modules/cpu-features/**"
     ],
     "afterPack": "build/after-pack.js",
     "mac": {
@@ -45,11 +48,17 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         },
         {
           "target": "zip",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ]
     },
@@ -63,22 +72,46 @@
         "height": 360
       },
       "contents": [
-        { "x": 150, "y": 165, "type": "file" },
-        { "x": 390, "y": 165, "type": "link", "path": "/Applications" }
+        {
+          "x": 150,
+          "y": 165,
+          "type": "file"
+        },
+        {
+          "x": 390,
+          "y": 165,
+          "type": "link",
+          "path": "/Applications"
+        }
       ]
     },
     "linux": {
       "icon": "build/icon.png",
       "category": "Office",
       "target": [
-        { "target": "AppImage", "arch": ["x64"] },
-        { "target": "deb", "arch": ["x64"] }
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
     "win": {
       "icon": "build/icon.png",
       "target": [
-        { "target": "nsis", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     }
   },
@@ -95,6 +128,7 @@
     "markdown-it": "^14.1.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "ssh2-sftp-client": "^11.0.0",
     "zustand": "^5.0.3"
   },
   "devDependencies": {
@@ -102,6 +136,7 @@
     "@types/node": "^22.10.5",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
+    "@types/ssh2-sftp-client": "^9.0.6",
     "@vitejs/plugin-react": "^4.3.4",
     "electron": "^33.3.1",
     "electron-builder": "^25.1.8",

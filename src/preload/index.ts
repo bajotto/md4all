@@ -11,6 +11,12 @@ const api = {
   watchVault: (vaultId: string) => ipcRenderer.invoke('vault:watch', vaultId),
   pickFolder: () => ipcRenderer.invoke('vault:pickFolder'),
   icloudPath: () => ipcRenderer.invoke('vault:icloudPath'),
+  unwatchVault: (vaultId: string) => ipcRenderer.invoke('vault:unwatch', vaultId),
+
+  // SFTP / SSH
+  addSftp: (input: unknown) => ipcRenderer.invoke('vault:addSftp', input),
+  testSftp: (input: unknown) => ipcRenderer.invoke('vault:testSftp', input),
+  pickKey: () => ipcRenderer.invoke('vault:pickKey'),
 
   // arquivos
   tree: (vaultId: string) => ipcRenderer.invoke('file:tree', vaultId),

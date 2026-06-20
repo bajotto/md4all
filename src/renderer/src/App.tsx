@@ -7,8 +7,8 @@ import Welcome from './components/Welcome'
 
 export default function App(): JSX.Element {
   const init = useStore((s) => s.init)
-  const activeVaultId = useStore((s) => s.activeVaultId)
-  const activePath = useStore((s) => s.activePath)
+  const vaults = useStore((s) => s.vaults)
+  const active = useStore((s) => s.active)
   const refreshTree = useStore((s) => s.refreshTree)
   const reloadTabFromDisk = useStore((s) => s.reloadTabFromDisk)
 
@@ -16,11 +16,11 @@ export default function App(): JSX.Element {
     void init()
   }, [init])
 
-  // reage a mudanças externas no filesystem (chokidar -> IPC)
+  // reage a mudanças externas no filesystem (chokidar -> IPC), por vault
   useEffect(() => {
     const off = window.api.onFsEvent((evt) => {
-      void refreshTree()
-      if (evt.type === 'change') void reloadTabFromDisk(evt.path)
+      void refreshTree(evt.vaultId)
+      if (evt.type === 'change') void reloadTabFromDisk(evt.vaultId, evt.path)
     })
     return off
   }, [refreshTree, reloadTabFromDisk])
@@ -29,12 +29,12 @@ export default function App(): JSX.Element {
     <div className="app">
       <Sidebar />
       <main className="workspace">
-        {!activeVaultId ? (
+        {vaults.length === 0 ? (
           <Welcome />
         ) : (
           <>
             <Tabs />
-            {activePath ? <Editor /> : <Welcome />}
+            {active ? <Editor /> : <Welcome />}
           </>
         )}
       </main>

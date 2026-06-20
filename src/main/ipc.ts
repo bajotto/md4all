@@ -5,6 +5,7 @@ import { exportHtml, exportPdf } from './export'
 import { search } from './search'
 import { watchVault } from './watcher'
 import {
+  addSftpVault,
   addVault,
   createFile,
   createFolder,
@@ -15,9 +16,11 @@ import {
   rename,
   saveAsset,
   suggestedIcloudPath,
+  testSftp,
   writeFile
 } from './vault'
-import type { AppSettings } from './types'
+import { unwatchVault } from './watcher'
+import type { AppSettings, SftpInput } from './types'
 
 export function registerIpc(): void {
   // ---- settings ----
@@ -38,6 +41,17 @@ export function registerIpc(): void {
     return { path: folder, name: path.basename(folder) }
   })
   ipcMain.handle('vault:icloudPath', () => suggestedIcloudPath())
+  ipcMain.handle('vault:addSftp', (_e, input: SftpInput) => addSftpVault(input))
+  ipcMain.handle('vault:testSftp', (_e, input: SftpInput) => testSftp(input))
+  ipcMain.handle('vault:pickKey', async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      message: 'Selecione a chave privada / certificado (ex.: id_rsa, .pem)'
+    })
+    if (result.canceled || result.filePaths.length === 0) return null
+    return result.filePaths[0]
+  })
+  ipcMain.handle('vault:unwatch', (_e, vaultId: string) => unwatchVault(vaultId))
 
   // ---- arquivos ----
   ipcMain.handle('file:tree', (_e, vaultId: string) => listTree(vaultId))

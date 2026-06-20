@@ -1,58 +1,63 @@
 import { create } from 'zustand'
-import type { AppSettings, EditorMode, FileNode, OpenTab, SearchHit, Vault } from '../types'
+import type { AppSettings, EditorMode, FileNode, OpenTab, SearchHit, SftpInput, Vault } from '../types'
+import { tabKey } from '../types'
 
 const api = window.api
 
+interface ActiveRef {
+  vaultId: string
+  path: string
+}
+
 interface State {
-  // config
   vaults: Vault[]
-  activeVaultId: string | null
   theme: 'light' | 'dark'
 
-  // navegação
-  tree: FileNode[]
+  // multi-raiz: árvore e estado de expansão por vault
+  trees: Record<string, FileNode[]>
+  expanded: Record<string, boolean>
+  loadingTree: Record<string, boolean>
+
   tabs: OpenTab[]
-  activePath: string | null
+  active: ActiveRef | null
   editorMode: EditorMode
 
-  // busca
   searchQuery: string
   searchResults: SearchHit[]
   searching: boolean
 
-  // ações de bootstrap / config
+  // bootstrap / config
   init: () => Promise<void>
-  setActiveVault: (vaultId: string) => Promise<void>
-  refreshTree: () => Promise<void>
+  loadTree: (vaultId: string) => Promise<void>
+  refreshTree: (vaultId: string) => Promise<void>
+  toggleVaultExpanded: (vaultId: string) => Promise<void>
   addVaultFromPicker: () => Promise<void>
   addVaultByPath: (path: string, name?: string) => Promise<boolean>
+  addSftpVault: (input: SftpInput) => Promise<boolean>
   removeVault: (vaultId: string) => Promise<void>
   toggleTheme: () => Promise<void>
 
-  // ações de arquivos
-  openFile: (relPath: string) => Promise<void>
-  closeTab: (relPath: string) => void
-  setActiveTab: (relPath: string) => void
-  updateContent: (relPath: string, content: string) => void
-  saveTab: (relPath: string) => Promise<void>
-  createFile: (relPath: string) => Promise<void>
-  createFolder: (relPath: string) => Promise<void>
-  renamePath: (from: string, to: string) => Promise<void>
-  deletePath: (relPath: string) => Promise<void>
-  reloadTabFromDisk: (relPath: string) => Promise<void>
+  // arquivos
+  openFile: (vaultId: string, relPath: string) => Promise<void>
+  closeTab: (vaultId: string, relPath: string) => void
+  setActiveTab: (vaultId: string, relPath: string) => void
+  updateContent: (vaultId: string, relPath: string, content: string) => void
+  saveTab: (vaultId: string, relPath: string) => Promise<void>
+  createFile: (vaultId: string, relPath: string) => Promise<void>
+  createFolder: (vaultId: string, relPath: string) => Promise<void>
+  renamePath: (vaultId: string, from: string, to: string) => Promise<void>
+  deletePath: (vaultId: string, relPath: string) => Promise<void>
+  reloadTabFromDisk: (vaultId: string, relPath: string) => Promise<void>
 
-  // editor
   setEditorMode: (mode: EditorMode) => void
 
-  // busca
   runSearch: (query: string) => Promise<void>
   clearSearch: () => void
 
-  // export
   exportActive: (format: 'html' | 'pdf') => Promise<string | null>
 
-  // helpers internos
   applySettings: (s: AppSettings) => void
+  activeTab: () => OpenTab | null
 }
 
 function basename(p: string): string {
@@ -62,46 +67,67 @@ function basename(p: string): string {
 
 export const useStore = create<State>((set, get) => ({
   vaults: [],
-  activeVaultId: null,
   theme: 'light',
-  tree: [],
+  trees: {},
+  expanded: {},
+  loadingTree: {},
   tabs: [],
-  activePath: null,
+  active: null,
   editorMode: 'wysiwyg',
   searchQuery: '',
   searchResults: [],
   searching: false,
 
   applySettings: (s) => {
-    set({ vaults: s.vaults, activeVaultId: s.activeVaultId, theme: s.theme })
+    set({ vaults: s.vaults, theme: s.theme })
     document.documentElement.dataset.theme = s.theme
+  },
+
+  activeTab: () => {
+    const { active, tabs } = get()
+    if (!active) return null
+    return tabs.find((t) => t.vaultId === active.vaultId && t.path === active.path) ?? null
   },
 
   init: async () => {
     const s = (await api.getSettings()) as AppSettings
     get().applySettings(s)
-    if (s.activeVaultId) {
-      await api.watchVault(s.activeVaultId)
-      await get().refreshTree()
+    // observa e carrega cada vault; locais expandidos por padrão,
+    // remotos (sftp) ficam recolhidos até o usuário clicar (rede).
+    const expanded: Record<string, boolean> = {}
+    for (const v of s.vaults) {
+      await api.watchVault(v.id)
+      if (v.kind !== 'sftp') {
+        expanded[v.id] = true
+        await get().loadTree(v.id)
+      } else {
+        expanded[v.id] = false
+      }
+    }
+    set({ expanded })
+  },
+
+  loadTree: async (vaultId) => {
+    set({ loadingTree: { ...get().loadingTree, [vaultId]: true } })
+    try {
+      const tree = (await api.tree(vaultId)) as FileNode[]
+      set({ trees: { ...get().trees, [vaultId]: tree } })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      await api.showError(`Falha ao listar o vault:\n${msg}`)
+    } finally {
+      set({ loadingTree: { ...get().loadingTree, [vaultId]: false } })
     }
   },
 
-  setActiveVault: async (vaultId) => {
-    const s = (await api.setSettings({ activeVaultId: vaultId })) as AppSettings
-    get().applySettings(s)
-    set({ tabs: [], activePath: null, searchResults: [], searchQuery: '' })
-    await api.watchVault(vaultId)
-    await get().refreshTree()
+  refreshTree: async (vaultId) => {
+    if (get().expanded[vaultId]) await get().loadTree(vaultId)
   },
 
-  refreshTree: async () => {
-    const { activeVaultId } = get()
-    if (!activeVaultId) {
-      set({ tree: [] })
-      return
-    }
-    const tree = (await api.tree(activeVaultId)) as FileNode[]
-    set({ tree })
+  toggleVaultExpanded: async (vaultId) => {
+    const open = !get().expanded[vaultId]
+    set({ expanded: { ...get().expanded, [vaultId]: open } })
+    if (open && !get().trees[vaultId]) await get().loadTree(vaultId)
   },
 
   addVaultFromPicker: async () => {
@@ -115,25 +141,42 @@ export const useStore = create<State>((set, get) => ({
       const vault = (await api.addVault(name ?? '', vaultPath)) as Vault
       const s = (await api.getSettings()) as AppSettings
       get().applySettings(s)
-      await get().setActiveVault(vault.id)
+      await api.watchVault(vault.id)
+      set({ expanded: { ...get().expanded, [vault.id]: true } })
+      await get().loadTree(vault.id)
       return true
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err)
-      await api.showError(msg)
+      await api.showError(err instanceof Error ? err.message : String(err))
+      return false
+    }
+  },
+
+  addSftpVault: async (input) => {
+    try {
+      const vault = (await api.addSftp(input)) as Vault
+      const s = (await api.getSettings()) as AppSettings
+      get().applySettings(s)
+      set({ expanded: { ...get().expanded, [vault.id]: true } })
+      await get().loadTree(vault.id)
+      return true
+    } catch (err) {
+      await api.showError(err instanceof Error ? err.message : String(err))
       return false
     }
   },
 
   removeVault: async (vaultId) => {
+    await api.unwatchVault(vaultId)
     await api.removeVault(vaultId)
     const s = (await api.getSettings()) as AppSettings
     get().applySettings(s)
-    if (s.activeVaultId) {
-      await api.watchVault(s.activeVaultId)
-      await get().refreshTree()
-    } else {
-      set({ tree: [], tabs: [], activePath: null })
-    }
+    // remove abas, árvore e estado do vault
+    const tabs = get().tabs.filter((t) => t.vaultId !== vaultId)
+    const trees = { ...get().trees }
+    delete trees[vaultId]
+    let active = get().active
+    if (active?.vaultId === vaultId) active = tabs[0] ? { vaultId: tabs[0].vaultId, path: tabs[0].path } : null
+    set({ tabs, trees, active })
   },
 
   toggleTheme: async () => {
@@ -142,130 +185,162 @@ export const useStore = create<State>((set, get) => ({
     get().applySettings(s)
   },
 
-  openFile: async (relPath) => {
-    const { activeVaultId, tabs } = get()
-    if (!activeVaultId) return
-    const existing = tabs.find((t) => t.path === relPath)
+  openFile: async (vaultId, relPath) => {
+    const existing = get().tabs.find((t) => t.vaultId === vaultId && t.path === relPath)
     if (existing) {
-      set({ activePath: relPath })
+      set({ active: { vaultId, path: relPath } })
       return
     }
-    const content = (await api.read(activeVaultId, relPath)) as string
-    const tab: OpenTab = { path: relPath, name: basename(relPath), content, dirty: false }
-    set({ tabs: [...tabs, tab], activePath: relPath })
-  },
-
-  closeTab: (relPath) => {
-    const { tabs, activePath } = get()
-    const idx = tabs.findIndex((t) => t.path === relPath)
-    if (idx === -1) return
-    const next = tabs.filter((t) => t.path !== relPath)
-    let nextActive = activePath
-    if (activePath === relPath) {
-      nextActive = next[idx]?.path ?? next[idx - 1]?.path ?? null
+    try {
+      const content = (await api.read(vaultId, relPath)) as string
+      const tab: OpenTab = { vaultId, path: relPath, name: basename(relPath), content, dirty: false }
+      set({ tabs: [...get().tabs, tab], active: { vaultId, path: relPath } })
+    } catch (err) {
+      await api.showError(err instanceof Error ? err.message : String(err))
     }
-    set({ tabs: next, activePath: nextActive })
   },
 
-  setActiveTab: (relPath) => set({ activePath: relPath }),
+  closeTab: (vaultId, relPath) => {
+    const { tabs, active } = get()
+    const idx = tabs.findIndex((t) => t.vaultId === vaultId && t.path === relPath)
+    if (idx === -1) return
+    const next = tabs.filter((t) => !(t.vaultId === vaultId && t.path === relPath))
+    let nextActive = active
+    if (active && active.vaultId === vaultId && active.path === relPath) {
+      const cand = next[idx] ?? next[idx - 1] ?? null
+      nextActive = cand ? { vaultId: cand.vaultId, path: cand.path } : null
+    }
+    set({ tabs: next, active: nextActive })
+  },
 
-  updateContent: (relPath, content) => {
+  setActiveTab: (vaultId, relPath) => set({ active: { vaultId, path: relPath } }),
+
+  updateContent: (vaultId, relPath, content) => {
     set({
       tabs: get().tabs.map((t) =>
-        t.path === relPath ? { ...t, content, dirty: true } : t
+        t.vaultId === vaultId && t.path === relPath ? { ...t, content, dirty: true } : t
       )
     })
   },
 
-  saveTab: async (relPath) => {
-    const { activeVaultId, tabs } = get()
-    if (!activeVaultId) return
-    const tab = tabs.find((t) => t.path === relPath)
+  saveTab: async (vaultId, relPath) => {
+    const tab = get().tabs.find((t) => t.vaultId === vaultId && t.path === relPath)
     if (!tab || !tab.dirty) return
-    await api.write(activeVaultId, relPath, tab.content)
-    set({ tabs: get().tabs.map((t) => (t.path === relPath ? { ...t, dirty: false } : t)) })
-  },
-
-  createFile: async (relPath) => {
-    const { activeVaultId } = get()
-    if (!activeVaultId) return
-    const finalPath = relPath.endsWith('.md') ? relPath : `${relPath}.md`
-    await api.createFile(activeVaultId, finalPath)
-    await get().refreshTree()
-    await get().openFile(finalPath)
-  },
-
-  createFolder: async (relPath) => {
-    const { activeVaultId } = get()
-    if (!activeVaultId) return
-    await api.createFolder(activeVaultId, relPath)
-    await get().refreshTree()
-  },
-
-  renamePath: async (from, to) => {
-    const { activeVaultId } = get()
-    if (!activeVaultId) return
-    await api.rename(activeVaultId, from, to)
-    set({
-      tabs: get().tabs.map((t) =>
-        t.path === from ? { ...t, path: to, name: basename(to) } : t
-      ),
-      activePath: get().activePath === from ? to : get().activePath
-    })
-    await get().refreshTree()
-  },
-
-  deletePath: async (relPath) => {
-    const { activeVaultId } = get()
-    if (!activeVaultId) return
-    await api.remove(activeVaultId, relPath)
-    // fecha abas dentro do caminho removido
-    const affected = get().tabs.filter(
-      (t) => t.path === relPath || t.path.startsWith(relPath + '/')
-    )
-    for (const t of affected) get().closeTab(t.path)
-    await get().refreshTree()
-  },
-
-  reloadTabFromDisk: async (relPath) => {
-    const { activeVaultId, tabs } = get()
-    if (!activeVaultId) return
-    const tab = tabs.find((t) => t.path === relPath)
-    if (!tab || tab.dirty) return // não sobrescreve edição não salva
     try {
-      const content = (await api.read(activeVaultId, relPath)) as string
+      await api.write(vaultId, relPath, tab.content)
       set({
-        tabs: get().tabs.map((t) => (t.path === relPath ? { ...t, content, dirty: false } : t))
+        tabs: get().tabs.map((t) =>
+          t.vaultId === vaultId && t.path === relPath ? { ...t, dirty: false } : t
+        )
+      })
+    } catch (err) {
+      await api.showError(`Falha ao salvar:\n${err instanceof Error ? err.message : String(err)}`)
+    }
+  },
+
+  createFile: async (vaultId, relPath) => {
+    const finalPath = relPath.endsWith('.md') ? relPath : `${relPath}.md`
+    try {
+      await api.createFile(vaultId, finalPath)
+      await get().refreshTree(vaultId)
+      await get().openFile(vaultId, finalPath)
+    } catch (err) {
+      await api.showError(err instanceof Error ? err.message : String(err))
+    }
+  },
+
+  createFolder: async (vaultId, relPath) => {
+    try {
+      await api.createFolder(vaultId, relPath)
+      await get().refreshTree(vaultId)
+    } catch (err) {
+      await api.showError(err instanceof Error ? err.message : String(err))
+    }
+  },
+
+  renamePath: async (vaultId, from, to) => {
+    try {
+      await api.rename(vaultId, from, to)
+      set({
+        tabs: get().tabs.map((t) =>
+          t.vaultId === vaultId && t.path === from ? { ...t, path: to, name: basename(to) } : t
+        ),
+        active:
+          get().active?.vaultId === vaultId && get().active?.path === from
+            ? { vaultId, path: to }
+            : get().active
+      })
+      await get().refreshTree(vaultId)
+    } catch (err) {
+      await api.showError(err instanceof Error ? err.message : String(err))
+    }
+  },
+
+  deletePath: async (vaultId, relPath) => {
+    try {
+      await api.remove(vaultId, relPath)
+      const affected = get().tabs.filter(
+        (t) => t.vaultId === vaultId && (t.path === relPath || t.path.startsWith(relPath + '/'))
+      )
+      for (const t of affected) get().closeTab(t.vaultId, t.path)
+      await get().refreshTree(vaultId)
+    } catch (err) {
+      await api.showError(err instanceof Error ? err.message : String(err))
+    }
+  },
+
+  reloadTabFromDisk: async (vaultId, relPath) => {
+    const tab = get().tabs.find((t) => t.vaultId === vaultId && t.path === relPath)
+    if (!tab || tab.dirty) return
+    try {
+      const content = (await api.read(vaultId, relPath)) as string
+      set({
+        tabs: get().tabs.map((t) =>
+          t.vaultId === vaultId && t.path === relPath ? { ...t, content, dirty: false } : t
+        )
       })
     } catch {
-      // arquivo pode ter sumido; ignora
+      /* arquivo pode ter sumido */
     }
   },
 
   setEditorMode: (mode) => set({ editorMode: mode }),
 
   runSearch: async (query) => {
-    const { activeVaultId } = get()
     set({ searchQuery: query })
-    if (!activeVaultId || !query.trim()) {
+    const { vaults } = get()
+    if (!query.trim() || vaults.length === 0) {
       set({ searchResults: [], searching: false })
       return
     }
     set({ searching: true })
-    const results = (await api.search(activeVaultId, query)) as SearchHit[]
-    set({ searchResults: results, searching: false })
+    const all: SearchHit[] = []
+    for (const v of vaults) {
+      try {
+        const hits = (await api.search(v.id, query)) as Array<{
+          path: string
+          line: number
+          preview: string
+        }>
+        for (const h of hits) all.push({ ...h, vaultId: v.id, vaultName: v.name })
+      } catch {
+        /* ignora vault que falhar (ex.: sftp offline) */
+      }
+    }
+    set({ searchResults: all, searching: false })
   },
 
   clearSearch: () => set({ searchQuery: '', searchResults: [] }),
 
   exportActive: async (format) => {
-    const { activeVaultId, activePath, tabs } = get()
-    if (!activeVaultId || !activePath) return null
-    const tab = tabs.find((t) => t.path === activePath)
+    const tab = get().activeTab()
     if (!tab) return null
-    // garante que o conteúdo no disco esteja atualizado antes de exportar
-    if (tab.dirty) await get().saveTab(activePath)
-    const fn = format === 'pdf' ? window.api.exportPdf : window.api.exportHtml
-    return (await fn(activeVaultId, activePath, tab.content)) as string | null
-  }
+    if (tab.dirty) await get().saveTab(tab.vaultId, tab.path)
+    const fn = format === 'pdf' ? api.exportPdf : api.exportHtml
+    return (await fn(tab.vaultId, tab.path, tab.content)) as string | null
+  },
+
+  // mantém tabKey acessível para componentes
 }))
+
+export { tabKey }

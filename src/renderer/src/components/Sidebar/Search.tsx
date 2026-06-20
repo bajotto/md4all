@@ -28,7 +28,7 @@ export default function Search(): JSX.Element {
       <input
         className="search-input"
         type="search"
-        placeholder="Buscar no vault…"
+        placeholder="Buscar em todos os vaults…"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
@@ -41,13 +41,14 @@ export default function Search(): JSX.Element {
           ) : (
             results.map((hit, i) => (
               <div
-                key={`${hit.path}:${hit.line}:${i}`}
+                key={`${hit.vaultId}:${hit.path}:${hit.line}:${i}`}
                 className="search-hit"
-                onClick={() => void openFile(hit.path)}
-                title={hit.path}
+                onClick={() => void openFile(hit.vaultId, hit.path)}
+                title={`${hit.vaultName} — ${hit.path}`}
               >
                 <div className="search-hit-path">
-                  {hit.path} <span className="search-hit-line">:{hit.line}</span>
+                  <span className="search-hit-vault">{hit.vaultName}</span> {hit.path}{' '}
+                  <span className="search-hit-line">:{hit.line}</span>
                 </div>
                 <div className="search-hit-preview">{hit.preview}</div>
               </div>

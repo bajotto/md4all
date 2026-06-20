@@ -3,7 +3,11 @@ import path from 'path'
 import os from 'os'
 import { randomUUID } from 'crypto'
 import { getSettings, setSettings } from './settings'
-import type { FileNode, Vault } from './types'
+import * as sftp from './sftp'
+import type { FileNode, SftpConfig, SftpInput, Vault } from './types'
+
+const TEXT_EXTS = new Set(['.md', '.markdown', '.mdown', '.mkd', '.txt'])
+const IGNORED = new Set(['.git', 'node_modules', '.obsidian', '.DS_Store'])
 
 /** Expande `~` para o home do usuário e normaliza o caminho. */
 function expandPath(p: string): string {
@@ -13,23 +17,24 @@ function expandPath(p: string): string {
   return path.resolve(out)
 }
 
-/** Caminho padrão do iCloud Drive no macOS (pasta do app, se existir). */
+/** Caminho padrão do iCloud Drive no macOS. */
 export function suggestedIcloudPath(): string {
   return path.join(os.homedir(), 'Library', 'Mobile Documents', 'com~apple~CloudDocs')
 }
 
-const TEXT_EXTS = new Set(['.md', '.markdown', '.mdown', '.mkd', '.txt'])
-const IGNORED = new Set(['.git', 'node_modules', '.obsidian', '.DS_Store'])
-
 export function getVault(vaultId: string): Vault {
   const vault = getSettings().vaults.find((v) => v.id === vaultId)
   if (!vault) throw new Error(`Vault não encontrado: ${vaultId}`)
-  return vault
+  // vaults antigos não têm `kind` -> tratamos como local
+  return { ...vault, kind: vault.kind ?? 'local' }
+}
+
+export function isSftp(vault: Vault): boolean {
+  return vault.kind === 'sftp'
 }
 
 /**
- * Resolve um caminho relativo dentro do vault, impedindo path traversal
- * (".." que escape da raiz). Retorna o caminho absoluto seguro.
+ * Resolve um caminho relativo dentro de um vault LOCAL, impedindo path traversal.
  */
 export function resolveInVault(vaultId: string, relPath: string): string {
   const vault = getVault(vaultId)
@@ -45,10 +50,9 @@ function toRel(root: string, abs: string): string {
   return path.relative(root, abs).split(path.sep).join('/')
 }
 
-export async function listTree(vaultId: string): Promise<FileNode[]> {
-  const vault = getVault(vaultId)
+// ---------------- LOCAL ----------------
+async function localListTree(vault: Vault): Promise<FileNode[]> {
   const root = path.resolve(vault.path)
-
   async function walk(dir: string): Promise<FileNode[]> {
     let entries: import('fs').Dirent[]
     try {
@@ -61,43 +65,52 @@ export async function listTree(vaultId: string): Promise<FileNode[]> {
       if (IGNORED.has(entry.name) || entry.name.startsWith('.')) continue
       const abs = path.join(dir, entry.name)
       if (entry.isDirectory()) {
-        nodes.push({
-          name: entry.name,
-          path: toRel(root, abs),
-          isDir: true,
-          children: await walk(abs)
-        })
+        nodes.push({ name: entry.name, path: toRel(root, abs), isDir: true, children: await walk(abs) })
       } else if (TEXT_EXTS.has(path.extname(entry.name).toLowerCase())) {
         nodes.push({ name: entry.name, path: toRel(root, abs), isDir: false })
       }
     }
-    // pastas primeiro, depois arquivos; ambos em ordem alfabética
     nodes.sort((a, b) => {
       if (a.isDir !== b.isDir) return a.isDir ? -1 : 1
       return a.name.localeCompare(b.name)
     })
     return nodes
   }
-
   return walk(root)
 }
 
+// ---------------- dispatch ----------------
+export async function listTree(vaultId: string): Promise<FileNode[]> {
+  const vault = getVault(vaultId)
+  return isSftp(vault) ? sftp.listTree(vault) : localListTree(vault)
+}
+
 export async function readFile(vaultId: string, relPath: string): Promise<string> {
-  const abs = resolveInVault(vaultId, relPath)
-  return fs.readFile(abs, 'utf-8')
+  const vault = getVault(vaultId)
+  if (isSftp(vault)) return sftp.readFile(vault, relPath)
+  return fs.readFile(resolveInVault(vaultId, relPath), 'utf-8')
+}
+
+export async function readAssetBinary(vaultId: string, relPath: string): Promise<Buffer> {
+  const vault = getVault(vaultId)
+  if (isSftp(vault)) return sftp.readBinary(vault, relPath)
+  return fs.readFile(resolveInVault(vaultId, relPath))
 }
 
 export async function writeFile(vaultId: string, relPath: string, content: string): Promise<void> {
+  const vault = getVault(vaultId)
+  if (isSftp(vault)) return sftp.writeFile(vault, relPath, content)
   const abs = resolveInVault(vaultId, relPath)
   await fs.mkdir(path.dirname(abs), { recursive: true })
   await fs.writeFile(abs, content, 'utf-8')
 }
 
 export async function createFile(vaultId: string, relPath: string): Promise<string> {
+  const vault = getVault(vaultId)
+  if (isSftp(vault)) return sftp.createFile(vault, relPath)
   const abs = resolveInVault(vaultId, relPath)
   await fs.mkdir(path.dirname(abs), { recursive: true })
   try {
-    // wx falha se o arquivo já existir
     await fs.writeFile(abs, '', { flag: 'wx' })
   } catch {
     throw new Error('Já existe um arquivo com esse nome')
@@ -106,38 +119,34 @@ export async function createFile(vaultId: string, relPath: string): Promise<stri
 }
 
 export async function createFolder(vaultId: string, relPath: string): Promise<string> {
-  const abs = resolveInVault(vaultId, relPath)
-  await fs.mkdir(abs, { recursive: true })
+  const vault = getVault(vaultId)
+  if (isSftp(vault)) return sftp.createFolder(vault, relPath)
+  await fs.mkdir(resolveInVault(vaultId, relPath), { recursive: true })
   return relPath
 }
 
-export async function rename(vaultId: string, fromRel: string, toRel: string): Promise<string> {
+export async function rename(vaultId: string, fromRel: string, toRelPath: string): Promise<string> {
+  const vault = getVault(vaultId)
+  if (isSftp(vault)) return sftp.rename(vault, fromRel, toRelPath)
   const from = resolveInVault(vaultId, fromRel)
-  const to = resolveInVault(vaultId, toRel)
+  const to = resolveInVault(vaultId, toRelPath)
   await fs.mkdir(path.dirname(to), { recursive: true })
   await fs.rename(from, to)
-  return toRel
+  return toRelPath
 }
 
 export async function remove(vaultId: string, relPath: string): Promise<void> {
-  const abs = resolveInVault(vaultId, relPath)
-  await fs.rm(abs, { recursive: true, force: true })
+  const vault = getVault(vaultId)
+  if (isSftp(vault)) return sftp.remove(vault, relPath)
+  await fs.rm(resolveInVault(vaultId, relPath), { recursive: true, force: true })
 }
 
-/**
- * Salva os bytes de uma imagem dentro de <vault>/assets/, evitando
- * sobrescrever arquivos existentes. Retorna o caminho relativo (assets/...).
- */
-export async function saveAsset(
-  vaultId: string,
-  fileName: string,
-  data: Uint8Array
-): Promise<string> {
+export async function saveAsset(vaultId: string, fileName: string, data: Uint8Array): Promise<string> {
   const vault = getVault(vaultId)
+  if (isSftp(vault)) return sftp.saveAsset(vault, fileName, data)
   const root = path.resolve(vault.path)
   const assetsDir = path.join(root, 'assets')
   await fs.mkdir(assetsDir, { recursive: true })
-
   const ext = path.extname(fileName) || '.png'
   const base = path.basename(fileName, ext).replace(/[^\w-]+/g, '-') || 'image'
   let candidate = `${base}${ext}`
@@ -154,10 +163,9 @@ export async function saveAsset(
   return `assets/${candidate}`
 }
 
+// ---------------- gestão de vaults ----------------
 export async function addVault(name: string, vaultPath: string): Promise<Vault> {
   const abs = expandPath(vaultPath)
-  // valida que o caminho existe e é uma pasta acessível (vale para disco
-  // local, share SMB montado em /Volumes, e iCloud Drive — todos são paths).
   let stat: import('fs').Stats
   try {
     stat = await fs.stat(abs)
@@ -170,14 +178,48 @@ export async function addVault(name: string, vaultPath: string): Promise<Vault> 
 
   const settings = getSettings()
   const finalName = name?.trim() || path.basename(abs) || 'vault'
-  const vault: Vault = { id: randomUUID().slice(0, 8), name: finalName, path: abs }
-  const vaults = [...settings.vaults, vault]
-  setSettings({ vaults, activeVaultId: vault.id })
+  const vault: Vault = { id: randomUUID().slice(0, 8), name: finalName, kind: 'local', path: abs }
+  setSettings({ vaults: [...settings.vaults, vault], activeVaultId: vault.id })
+  return vault
+}
+
+/** Monta a config SFTP cifrando os segredos. */
+function buildSftpConfig(input: SftpInput): SftpConfig {
+  const cfg: SftpConfig = {
+    host: input.host.trim(),
+    port: Number(input.port) || 22,
+    username: input.username.trim()
+  }
+  if (input.password) cfg.encPassword = sftp.encryptSecret(input.password)
+  if (input.privateKeyPath?.trim()) cfg.privateKeyPath = expandPath(input.privateKeyPath)
+  if (input.passphrase) cfg.encPassphrase = sftp.encryptSecret(input.passphrase)
+  return cfg
+}
+
+export async function testSftp(input: SftpInput): Promise<void> {
+  await sftp.testConnection(buildSftpConfig(input), input.rootPath?.trim() || '.')
+}
+
+export async function addSftpVault(input: SftpInput): Promise<Vault> {
+  const cfg = buildSftpConfig(input)
+  // valida a conexão antes de salvar
+  await sftp.testConnection(cfg, input.rootPath?.trim() || '.')
+  const settings = getSettings()
+  const vault: Vault = {
+    id: randomUUID().slice(0, 8),
+    name: input.name?.trim() || `${input.username}@${input.host}`,
+    kind: 'sftp',
+    path: input.rootPath?.trim() || '.',
+    sftp: cfg
+  }
+  setSettings({ vaults: [...settings.vaults, vault], activeVaultId: vault.id })
   return vault
 }
 
 export function removeVault(vaultId: string): void {
   const settings = getSettings()
+  const target = settings.vaults.find((v) => v.id === vaultId)
+  if (target && (target.kind ?? 'local') === 'sftp') sftp.disconnect(vaultId)
   const vaults = settings.vaults.filter((v) => v.id !== vaultId)
   const activeVaultId =
     settings.activeVaultId === vaultId ? (vaults[0]?.id ?? null) : settings.activeVaultId
