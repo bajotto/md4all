@@ -1,0 +1,111 @@
+{
+  "name": "md4all",
+  "version": "0.1.0",
+  "description": "Editor Markdown WYSIWYG completo (local / iCloud / SMB)",
+  "main": "./out/main/index.js",
+  "author": "md4all",
+  "license": "MIT",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "dist:mac": "electron-vite build && electron-builder --mac --config",
+    "dist:linux": "electron-vite build && electron-builder --linux",
+    "dist:win": "electron-vite build && electron-builder --win",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json"
+  },
+  "build": {
+    "appId": "com.md4all.app",
+    "productName": "md4all",
+    "copyright": "Copyright © 2025 md4all",
+    "files": [
+      "out/**/*",
+      "!out/**/*.map"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/chokidar/**",
+      "node_modules/electron-store/**",
+      "node_modules/highlight.js/**",
+      "node_modules/markdown-it/**"
+    ],
+    "mac": {
+      "icon": "build/icon.icns",
+      "category": "public.app-category.productivity",
+      "darkModeSupport": true,
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["x64", "arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["x64", "arm64"]
+        }
+      ]
+    },
+    "dmg": {
+      "title": "md4all ${version}",
+      "icon": "build/icon.icns",
+      "iconSize": 80,
+      "background": "build/dmg-background.png",
+      "window": {
+        "width": 540,
+        "height": 360
+      },
+      "contents": [
+        { "x": 150, "y": 165, "type": "file" },
+        { "x": 390, "y": 165, "type": "link", "path": "/Applications" }
+      ]
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "category": "Office",
+      "target": [
+        { "target": "AppImage", "arch": ["x64"] },
+        { "target": "deb", "arch": ["x64"] }
+      ]
+    },
+    "win": {
+      "icon": "build/icon.png",
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ]
+    }
+  },
+  "dependencies": {
+    "@codemirror/lang-markdown": "^6.3.1",
+    "@codemirror/language-data": "^6.5.1",
+    "@codemirror/state": "^6.5.2",
+    "@codemirror/view": "^6.36.2",
+    "@milkdown/crepe": "^7.6.0",
+    "@milkdown/kit": "^7.6.0",
+    "chokidar": "^4.0.3",
+    "electron-store": "^8.2.0",
+    "highlight.js": "^11.11.1",
+    "markdown-it": "^14.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@types/markdown-it": "^14.1.2",
+    "@types/node": "^22.10.5",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^33.3.1",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "typescript": "^5.7.3",
+    "vite": "^5.4.11"
+  }
+}
