@@ -2,11 +2,15 @@ import { useEffect, useRef, type MutableRefObject } from 'react'
 import { Crepe } from '@milkdown/crepe'
 import { editorViewCtx } from '@milkdown/kit/core'
 import { callCommand } from '@milkdown/kit/utils'
+import { TextSelection } from '@milkdown/kit/prose/state'
 import type { EditorView } from '@milkdown/kit/prose/view'
 import '@milkdown/crepe/theme/common/style.css'
 import '@milkdown/crepe/theme/frame.css'
 import { toDisplay, toStorage } from './assetPaths'
 import { createPmController, searchPlugin } from '../../editor/pmSearch'
+import { mermaidPlugin } from '../../editor/mermaidPlugin'
+import { pkmTokensPlugin } from '../../editor/pkmTokens'
+import { colorPlugins } from '../../editor/colorMark'
 import type { SearchController } from '../../editor/search'
 
 /** API imperativa exposta pelo editor para a toolbar de formatação e busca. */
@@ -14,6 +18,8 @@ export interface EditorApi {
   // dispara um comando Milkdown (ex.: toggleStrongCommand.key) com payload opcional
   run: (key: unknown, payload?: unknown) => void
   focus: () => void
+  // rola até o n-ésimo heading (0-based) do documento — usado pelo sumário
+  scrollToHeading: (index: number) => void
   search: SearchController
 }
 
@@ -23,6 +29,9 @@ interface Props {
   initialContent: string
   onChange: (storageMarkdown: string) => void
   apiRef?: MutableRefObject<EditorApi | null>
+  // clique em [[wikilink]] e #tag (PKM)
+  onWikilink?: (target: string) => void
+  onTag?: (tag: string) => void
 }
 
 /**
@@ -30,10 +39,35 @@ interface Props {
  * Traz tabelas GFM editáveis, blocos de código com CodeMirror, listas de
  * tarefas, drag handles e upload de imagens. Recriado a cada arquivo via `key`.
  */
-export default function MilkdownCrepe({ vaultId, initialContent, onChange, apiRef }: Props): JSX.Element {
+export default function MilkdownCrepe({
+  vaultId,
+  initialContent,
+  onChange,
+  apiRef,
+  onWikilink,
+  onTag
+}: Props): JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null)
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
+  const onWikilinkRef = useRef(onWikilink)
+  onWikilinkRef.current = onWikilink
+  const onTagRef = useRef(onTag)
+  onTagRef.current = onTag
+
+  const handleHostClick = (e: React.MouseEvent<HTMLDivElement>): void => {
+    const el = (e.target as HTMLElement).closest('[data-target],[data-tag]') as HTMLElement | null
+    if (!el) return
+    const target = el.getAttribute('data-target')
+    const tag = el.getAttribute('data-tag')
+    if (target != null) {
+      e.preventDefault()
+      onWikilinkRef.current?.(target)
+    } else if (tag != null) {
+      e.preventDefault()
+      onTagRef.current?.(tag)
+    }
+  }
 
   useEffect(() => {
     const host = hostRef.current
@@ -61,6 +95,9 @@ export default function MilkdownCrepe({ vaultId, initialContent, onChange, apiRe
         }
       }
     })
+
+    // registra a mark de cor + round-trip remark antes de criar o editor
+    crepe.editor.use(colorPlugins)
 
     crepe.on((listener) => {
       listener.markdownUpdated((_ctx, markdown) => {
@@ -90,7 +127,9 @@ export default function MilkdownCrepe({ vaultId, initialContent, onChange, apiRe
       const view = getView()
       if (view) {
         view.updateState(
-          view.state.reconfigure({ plugins: view.state.plugins.concat(searchPlugin()) })
+          view.state.reconfigure({
+            plugins: view.state.plugins.concat(searchPlugin(), mermaidPlugin(), pkmTokensPlugin())
+          })
         )
       }
       apiRef.current = {
@@ -99,6 +138,27 @@ export default function MilkdownCrepe({ vaultId, initialContent, onChange, apiRe
         },
         focus: () => {
           editor.action((ctx) => ctx.get(editorViewCtx).focus())
+        },
+        scrollToHeading: (index) => {
+          const v = getView()
+          if (!v) return
+          let count = 0
+          let target = -1
+          v.state.doc.descendants((node, pos) => {
+            if (target >= 0) return false
+            if (node.type.name === 'heading') {
+              if (count === index) {
+                target = pos
+                return false
+              }
+              count++
+            }
+            return true
+          })
+          if (target < 0) return
+          const sel = TextSelection.near(v.state.doc.resolve(target + 1))
+          v.dispatch(v.state.tr.setSelection(sel).scrollIntoView())
+          v.focus()
         },
         search: createPmController(getView)
       }
@@ -114,5 +174,5 @@ export default function MilkdownCrepe({ vaultId, initialContent, onChange, apiRe
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vaultId])
 
-  return <div className="crepe-host" ref={hostRef} />
+  return <div className="crepe-host" ref={hostRef} onClick={handleHostClick} />
 }

@@ -1,4 +1,4 @@
-import { useRef, type MutableRefObject } from 'react'
+import { useEffect, useRef, useState, type MutableRefObject } from 'react'
 import {
   toggleStrongCommand,
   toggleEmphasisCommand,
@@ -14,7 +14,22 @@ import {
   insertImageCommand
 } from '@milkdown/kit/preset/commonmark'
 import { toggleStrikethroughCommand, insertTableCommand } from '@milkdown/kit/preset/gfm'
+import { applyColorCommand } from '../../editor/colorMark'
 import type { EditorApi } from './MilkdownCrepe'
+
+// paleta padrão do seletor de cor (funciona em tema claro e escuro)
+const PALETTE = [
+  '#e11d48',
+  '#ea580c',
+  '#d97706',
+  '#16a34a',
+  '#0d9488',
+  '#2563eb',
+  '#7c3aed',
+  '#db2777',
+  '#64748b',
+  '#111827'
+]
 
 interface Props {
   apiRef: MutableRefObject<EditorApi | null>
@@ -28,11 +43,28 @@ interface Props {
  */
 export default function FormatToolbar({ apiRef, vaultId }: Props): JSX.Element {
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const colorWrapRef = useRef<HTMLDivElement>(null)
+  const [colorOpen, setColorOpen] = useState(false)
 
   const run = (key: unknown, payload?: unknown): void => {
     apiRef.current?.run(key, payload)
     apiRef.current?.focus()
   }
+
+  const applyColor = (color?: string): void => {
+    run(applyColorCommand.key, color)
+    setColorOpen(false)
+  }
+
+  // fecha o popover de cor ao clicar fora
+  useEffect(() => {
+    if (!colorOpen) return
+    const onDown = (e: MouseEvent): void => {
+      if (!colorWrapRef.current?.contains(e.target as Node)) setColorOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [colorOpen])
 
   const onImagePicked = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
     const file = e.target.files?.[0]
@@ -74,6 +106,51 @@ export default function FormatToolbar({ apiRef, vaultId }: Props): JSX.Element {
         {btn(<s>S</s>, 'Tachado', () => run(toggleStrikethroughCommand.key))}
         {btn(<code>{'</>'}</code>, 'Código inline', () => run(toggleInlineCodeCommand.key))}
         {btn('🔗', 'Link', () => run(toggleLinkCommand.key, { href: '' }))}
+        <div className="color-wrap" ref={colorWrapRef}>
+          <button
+            className="fmt-btn"
+            title="Cor do texto"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => setColorOpen((v) => !v)}
+          >
+            <span className="color-icon">A</span>
+          </button>
+          {colorOpen ? (
+            <div className="color-popover">
+              <div className="color-swatches">
+                {PALETTE.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className="color-swatch"
+                    style={{ background: c }}
+                    title={c}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => applyColor(c)}
+                  />
+                ))}
+              </div>
+              <div className="color-actions">
+                <label className="color-custom" title="Cor personalizada">
+                  <span>Outra…</span>
+                  <input
+                    type="color"
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onChange={(e) => applyColor(e.target.value)}
+                  />
+                </label>
+                <button
+                  type="button"
+                  className="color-clear"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => applyColor(undefined)}
+                >
+                  Remover
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </div>
       </div>
       <span className="fmt-sep" />
       <div className="fmt-group">

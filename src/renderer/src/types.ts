@@ -28,6 +28,21 @@ export interface AppSettings {
   theme: 'light' | 'dark'
 }
 
+export interface BacklinkRef {
+  path: string
+  title: string
+}
+
+export interface TagInfo {
+  tag: string
+  count: number
+}
+
+export interface NoteRef {
+  path: string
+  title: string
+}
+
 export type EditorMode = 'wysiwyg' | 'source'
 
 export interface OpenTab {

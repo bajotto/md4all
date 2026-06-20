@@ -1,6 +1,7 @@
 import VaultPicker from './VaultPicker'
 import Search from './Search'
 import VaultRoot from './FileTree'
+import TagPanel from './TagPanel'
 import { useStore } from '../../store/useStore'
 
 export default function Sidebar(): JSX.Element {
@@ -20,6 +21,7 @@ export default function Sidebar(): JSX.Element {
               <VaultRoot key={v.id} vault={v} />
             ))}
           </div>
+          <TagPanel />
         </>
       )}
     </aside>

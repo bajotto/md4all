@@ -1,5 +1,16 @@
 import { create } from 'zustand'
-import type { AppSettings, EditorMode, FileNode, OpenTab, SearchHit, SftpInput, Vault } from '../types'
+import type {
+  AppSettings,
+  BacklinkRef,
+  EditorMode,
+  FileNode,
+  NoteRef,
+  OpenTab,
+  SearchHit,
+  SftpInput,
+  TagInfo,
+  Vault
+} from '../types'
 import { tabKey } from '../types'
 
 const api = window.api
@@ -21,10 +32,15 @@ interface State {
   tabs: OpenTab[]
   active: ActiveRef | null
   editorMode: EditorMode
+  outlineOpen: boolean
 
   searchQuery: string
   searchResults: SearchHit[]
   searching: boolean
+
+  // PKM (índice: wikilinks / tags / backlinks)
+  backlinks: BacklinkRef[]
+  tagFilter: { tag: string; notes: NoteRef[] } | null
 
   // bootstrap / config
   init: () => Promise<void>
@@ -50,9 +66,17 @@ interface State {
   reloadTabFromDisk: (vaultId: string, relPath: string) => Promise<void>
 
   setEditorMode: (mode: EditorMode) => void
+  toggleOutline: () => void
 
   runSearch: (query: string) => Promise<void>
   clearSearch: () => void
+
+  // PKM
+  loadBacklinks: () => Promise<void>
+  openWikilink: (target: string) => Promise<void>
+  filterByTag: (tag: string) => Promise<void>
+  clearTagFilter: () => void
+  loadTags: () => Promise<TagInfo[]>
 
   exportActive: (format: 'html' | 'pdf') => Promise<string | null>
 
@@ -74,9 +98,12 @@ export const useStore = create<State>((set, get) => ({
   tabs: [],
   active: null,
   editorMode: 'wysiwyg',
+  outlineOpen: true,
   searchQuery: '',
   searchResults: [],
   searching: false,
+  backlinks: [],
+  tagFilter: null,
 
   applySettings: (s) => {
     set({ vaults: s.vaults, theme: s.theme })
@@ -112,6 +139,8 @@ export const useStore = create<State>((set, get) => ({
     try {
       const tree = (await api.tree(vaultId)) as FileNode[]
       set({ trees: { ...get().trees, [vaultId]: tree } })
+      // constrói o índice de PKM em segundo plano (wikilinks/tags/backlinks)
+      void api.indexBuild(vaultId).then(() => get().loadBacklinks())
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       await api.showError(`Falha ao listar o vault:\n${msg}`)
@@ -189,12 +218,14 @@ export const useStore = create<State>((set, get) => ({
     const existing = get().tabs.find((t) => t.vaultId === vaultId && t.path === relPath)
     if (existing) {
       set({ active: { vaultId, path: relPath } })
+      void get().loadBacklinks()
       return
     }
     try {
       const content = (await api.read(vaultId, relPath)) as string
       const tab: OpenTab = { vaultId, path: relPath, name: basename(relPath), content, dirty: false }
       set({ tabs: [...get().tabs, tab], active: { vaultId, path: relPath } })
+      void get().loadBacklinks()
     } catch (err) {
       await api.showError(err instanceof Error ? err.message : String(err))
     }
@@ -213,7 +244,10 @@ export const useStore = create<State>((set, get) => ({
     set({ tabs: next, active: nextActive })
   },
 
-  setActiveTab: (vaultId, relPath) => set({ active: { vaultId, path: relPath } }),
+  setActiveTab: (vaultId, relPath) => {
+    set({ active: { vaultId, path: relPath } })
+    void get().loadBacklinks()
+  },
 
   updateContent: (vaultId, relPath, content) => {
     set({
@@ -306,6 +340,8 @@ export const useStore = create<State>((set, get) => ({
 
   setEditorMode: (mode) => set({ editorMode: mode }),
 
+  toggleOutline: () => set({ outlineOpen: !get().outlineOpen }),
+
   runSearch: async (query) => {
     set({ searchQuery: query })
     const { vaults } = get()
@@ -331,6 +367,59 @@ export const useStore = create<State>((set, get) => ({
   },
 
   clearSearch: () => set({ searchQuery: '', searchResults: [] }),
+
+  loadBacklinks: async () => {
+    const { active } = get()
+    if (!active) {
+      set({ backlinks: [] })
+      return
+    }
+    try {
+      const refs = (await api.indexBacklinks(active.vaultId, active.path)) as BacklinkRef[]
+      // só aplica se ainda for o arquivo ativo (evita corrida ao trocar de aba)
+      const cur = get().active
+      if (cur && cur.vaultId === active.vaultId && cur.path === active.path) set({ backlinks: refs })
+    } catch {
+      set({ backlinks: [] })
+    }
+  },
+
+  openWikilink: async (target) => {
+    const { active } = get()
+    if (!active) return
+    try {
+      const resolved = (await api.indexResolve(active.vaultId, target)) as string | null
+      if (resolved) await get().openFile(active.vaultId, resolved)
+      else await api.showError(`Nota não encontrada: [[${target}]]`)
+    } catch (err) {
+      await api.showError(err instanceof Error ? err.message : String(err))
+    }
+  },
+
+  filterByTag: async (tag) => {
+    const { active, vaults } = get()
+    const vaultId = active?.vaultId ?? vaults[0]?.id
+    if (!vaultId) return
+    try {
+      const notes = (await api.indexNotesForTag(vaultId, tag)) as NoteRef[]
+      set({ tagFilter: { tag, notes } })
+    } catch {
+      set({ tagFilter: { tag, notes: [] } })
+    }
+  },
+
+  clearTagFilter: () => set({ tagFilter: null }),
+
+  loadTags: async () => {
+    const { active, vaults } = get()
+    const vaultId = active?.vaultId ?? vaults[0]?.id
+    if (!vaultId) return []
+    try {
+      return (await api.indexTags(vaultId)) as TagInfo[]
+    } catch {
+      return []
+    }
+  },
 
   exportActive: async (format) => {
     const tab = get().activeTab()

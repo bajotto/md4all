@@ -11,6 +11,7 @@ export default function App(): JSX.Element {
   const active = useStore((s) => s.active)
   const refreshTree = useStore((s) => s.refreshTree)
   const reloadTabFromDisk = useStore((s) => s.reloadTabFromDisk)
+  const loadBacklinks = useStore((s) => s.loadBacklinks)
 
   useEffect(() => {
     void init()
@@ -21,9 +22,10 @@ export default function App(): JSX.Element {
     const off = window.api.onFsEvent((evt) => {
       void refreshTree(evt.vaultId)
       if (evt.type === 'change') void reloadTabFromDisk(evt.vaultId, evt.path)
+      void loadBacklinks()
     })
     return off
-  }, [refreshTree, reloadTabFromDisk])
+  }, [refreshTree, reloadTabFromDisk, loadBacklinks])
 
   return (
     <div className="app">

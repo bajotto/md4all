@@ -20,6 +20,17 @@ import {
   writeFile
 } from './vault'
 import { unwatchVault } from './watcher'
+import {
+  allTags,
+  backlinksFor,
+  buildIndex,
+  dropVault,
+  listNotes,
+  notesForTag,
+  removeNote,
+  resolveLink,
+  touchNote
+} from './vaultIndex'
 import type { AppSettings, SftpInput } from './types'
 
 export function registerIpc(): void {
@@ -29,7 +40,10 @@ export function registerIpc(): void {
 
   // ---- vaults ----
   ipcMain.handle('vault:add', (_e, name: string, vaultPath: string) => addVault(name, vaultPath))
-  ipcMain.handle('vault:remove', (_e, vaultId: string) => removeVault(vaultId))
+  ipcMain.handle('vault:remove', (_e, vaultId: string) => {
+    dropVault(vaultId)
+    return removeVault(vaultId)
+  })
   ipcMain.handle('vault:watch', (_e, vaultId: string) => watchVault(vaultId))
   ipcMain.handle('vault:pickFolder', async () => {
     const result = await dialog.showOpenDialog({
@@ -56,9 +70,10 @@ export function registerIpc(): void {
   // ---- arquivos ----
   ipcMain.handle('file:tree', (_e, vaultId: string) => listTree(vaultId))
   ipcMain.handle('file:read', (_e, vaultId: string, relPath: string) => readFile(vaultId, relPath))
-  ipcMain.handle('file:write', (_e, vaultId: string, relPath: string, content: string) =>
-    writeFile(vaultId, relPath, content)
-  )
+  ipcMain.handle('file:write', async (_e, vaultId: string, relPath: string, content: string) => {
+    await writeFile(vaultId, relPath, content)
+    await touchNote(vaultId, relPath)
+  })
   ipcMain.handle('file:create', (_e, vaultId: string, relPath: string) =>
     createFile(vaultId, relPath)
   )
@@ -68,7 +83,24 @@ export function registerIpc(): void {
   ipcMain.handle('file:rename', (_e, vaultId: string, from: string, to: string) =>
     rename(vaultId, from, to)
   )
-  ipcMain.handle('file:remove', (_e, vaultId: string, relPath: string) => remove(vaultId, relPath))
+  ipcMain.handle('file:remove', async (_e, vaultId: string, relPath: string) => {
+    await remove(vaultId, relPath)
+    removeNote(vaultId, relPath)
+  })
+
+  // ---- índice (wikilinks / tags / backlinks) ----
+  ipcMain.handle('index:build', (_e, vaultId: string) => buildIndex(vaultId))
+  ipcMain.handle('index:backlinks', (_e, vaultId: string, relPath: string) =>
+    backlinksFor(vaultId, relPath)
+  )
+  ipcMain.handle('index:tags', (_e, vaultId: string) => allTags(vaultId))
+  ipcMain.handle('index:notesForTag', (_e, vaultId: string, tag: string) =>
+    notesForTag(vaultId, tag)
+  )
+  ipcMain.handle('index:resolve', (_e, vaultId: string, target: string) =>
+    resolveLink(vaultId, target)
+  )
+  ipcMain.handle('index:notes', (_e, vaultId: string) => listNotes(vaultId))
 
   // ---- imagens / assets ----
   ipcMain.handle('asset:save', (_e, vaultId: string, fileName: string, data: Uint8Array) =>

@@ -7,10 +7,16 @@ import { languages } from '@codemirror/language-data'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { findMatches, type MatchRange, type SearchController, type SearchOccurrence } from '../../editor/search'
 
+/** API imperativa de navegação no modo source (usada pelo sumário). */
+export interface SourceNav {
+  goToLine: (line: number) => void
+}
+
 interface Props {
   initialContent: string
   onChange: (markdown: string) => void
   searchRef?: MutableRefObject<SearchController | null>
+  navRef?: MutableRefObject<SourceNav | null>
 }
 
 // ---- destaque das ocorrências via decorations ----
@@ -124,7 +130,12 @@ function createCmController(view: EditorView): SearchController {
 }
 
 /** Modo source: edita o markdown cru com CodeMirror 6 e highlight de sintaxe. */
-export default function CodeMirrorSource({ initialContent, onChange, searchRef }: Props): JSX.Element {
+export default function CodeMirrorSource({
+  initialContent,
+  onChange,
+  searchRef,
+  navRef
+}: Props): JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null)
   const onChangeRef = useRef(onChange)
   onChangeRef.current = onChange
@@ -154,9 +165,20 @@ export default function CodeMirrorSource({ initialContent, onChange, searchRef }
     const view = new EditorView({ state, parent: host })
     view.focus()
     if (searchRef) searchRef.current = createCmController(view)
+    if (navRef) {
+      navRef.current = {
+        goToLine: (line) => {
+          const n = Math.max(1, Math.min(line, view.state.doc.lines))
+          const info = view.state.doc.line(n)
+          view.dispatch({ selection: { anchor: info.from }, scrollIntoView: true })
+          view.focus()
+        }
+      }
+    }
 
     return () => {
       if (searchRef) searchRef.current = null
+      if (navRef) navRef.current = null
       view.destroy()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

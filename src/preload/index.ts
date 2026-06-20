@@ -38,6 +38,17 @@ const api = {
   // busca
   search: (vaultId: string, query: string) => ipcRenderer.invoke('search:run', vaultId, query),
 
+  // índice (wikilinks / tags / backlinks)
+  indexBuild: (vaultId: string) => ipcRenderer.invoke('index:build', vaultId),
+  indexBacklinks: (vaultId: string, relPath: string) =>
+    ipcRenderer.invoke('index:backlinks', vaultId, relPath),
+  indexTags: (vaultId: string) => ipcRenderer.invoke('index:tags', vaultId),
+  indexNotesForTag: (vaultId: string, tag: string) =>
+    ipcRenderer.invoke('index:notesForTag', vaultId, tag),
+  indexResolve: (vaultId: string, target: string) =>
+    ipcRenderer.invoke('index:resolve', vaultId, target),
+  indexNotes: (vaultId: string) => ipcRenderer.invoke('index:notes', vaultId),
+
   // dialogs nativos
   confirm: (message: string) => ipcRenderer.invoke('dialog:confirm', message),
   showError: (message: string) => ipcRenderer.invoke('dialog:error', message),

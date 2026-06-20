@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '../../store/useStore'
 import MilkdownCrepe, { type EditorApi } from './MilkdownCrepe'
-import CodeMirrorSource from './CodeMirrorSource'
+import CodeMirrorSource, { type SourceNav } from './CodeMirrorSource'
 import FormatToolbar from './FormatToolbar'
 import FindBar from './FindBar'
 import Toolbar from './Toolbar'
+import Outline from '../Outline/Outline'
+import Backlinks from '../Outline/Backlinks'
 import { tabKey } from '../../types'
+import { parseOutline, type OutlineItem } from '../../editor/outline'
 import type { SearchController } from '../../editor/search'
 
 const AUTOSAVE_MS = 600
@@ -16,11 +19,19 @@ export default function Editor(): JSX.Element | null {
   const editorMode = useStore((s) => s.editorMode)
   const updateContent = useStore((s) => s.updateContent)
   const saveTab = useStore((s) => s.saveTab)
+  const outlineOpen = useStore((s) => s.outlineOpen)
+  const backlinks = useStore((s) => s.backlinks)
+  const openWikilink = useStore((s) => s.openWikilink)
+  const filterByTag = useStore((s) => s.filterByTag)
+  const openFile = useStore((s) => s.openFile)
 
   const tab = active ? tabs.find((t) => t.vaultId === active.vaultId && t.path === active.path) : undefined
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const editorApi = useRef<EditorApi | null>(null)
   const cmSearch = useRef<SearchController | null>(null)
+  const cmNav = useRef<SourceNav | null>(null)
+
+  const outline = useMemo(() => parseOutline(tab?.content ?? ''), [tab?.content])
 
   const [findOpen, setFindOpen] = useState(false)
   const [findReplace, setFindReplace] = useState(false)
@@ -89,7 +100,18 @@ export default function Editor(): JSX.Element | null {
     [active, updateContent, scheduleSave]
   )
 
+  const handleOutlineSelect = useCallback(
+    (item: OutlineItem) => {
+      if (editorMode === 'wysiwyg') editorApi.current?.scrollToHeading(item.index)
+      else cmNav.current?.goToLine(item.line)
+    },
+    [editorMode]
+  )
+
   if (!tab || !active) return null
+
+  const showOutline = outlineOpen && outline.length > 0
+  const showAside = showOutline || backlinks.length > 0
 
   return (
     <div className="editor">
@@ -105,23 +127,39 @@ export default function Editor(): JSX.Element | null {
           onClose={() => setFindOpen(false)}
         />
       ) : null}
-      <div className="editor-surface">
-        {editorMode === 'wysiwyg' ? (
-          <MilkdownCrepe
-            key={`wys:${activeKey}`}
-            vaultId={active.vaultId}
-            initialContent={tab.content}
-            onChange={handleChange}
-            apiRef={editorApi}
-          />
-        ) : (
-          <CodeMirrorSource
-            key={`src:${activeKey}`}
-            initialContent={tab.content}
-            onChange={handleChange}
-            searchRef={cmSearch}
-          />
-        )}
+      <div className="editor-body">
+        <div className="editor-surface">
+          {editorMode === 'wysiwyg' ? (
+            <MilkdownCrepe
+              key={`wys:${activeKey}`}
+              vaultId={active.vaultId}
+              initialContent={tab.content}
+              onChange={handleChange}
+              apiRef={editorApi}
+              onWikilink={(t) => void openWikilink(t)}
+              onTag={(t) => void filterByTag(t)}
+            />
+          ) : (
+            <CodeMirrorSource
+              key={`src:${activeKey}`}
+              initialContent={tab.content}
+              onChange={handleChange}
+              searchRef={cmSearch}
+              navRef={cmNav}
+            />
+          )}
+        </div>
+        {showAside ? (
+          <div className="editor-aside">
+            {showOutline ? <Outline items={outline} onSelect={handleOutlineSelect} /> : null}
+            {backlinks.length > 0 ? (
+              <Backlinks
+                items={backlinks}
+                onSelect={(ref) => void openFile(active.vaultId, ref.path)}
+              />
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </div>
   )
