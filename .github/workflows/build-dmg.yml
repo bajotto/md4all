@@ -28,14 +28,15 @@ jobs:
       # e a build prossegue sem assinatura (modo de desenvolvimento).
       - name: Build + DMG (x64 + arm64)
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Configure em Settings → Secrets para assinar:
           # APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID
           # CSC_LINK (certificado .p12 em base64), CSC_KEY_PASSWORD
           CSC_IDENTITY_AUTO_DISCOVERY: false
         run: |
           npm run build
-          npx electron-builder --mac dmg --x64
-          npx electron-builder --mac dmg --arm64
+          npx electron-builder --mac dmg --x64 --publish never
+          npx electron-builder --mac dmg --arm64 --publish never
 
       - name: Listar artefatos
         run: ls -lh dist/
