@@ -25,6 +25,7 @@ interface State {
   setActiveVault: (vaultId: string) => Promise<void>
   refreshTree: () => Promise<void>
   addVaultFromPicker: () => Promise<void>
+  addVaultByPath: (path: string, name?: string) => Promise<boolean>
   removeVault: (vaultId: string) => Promise<void>
   toggleTheme: () => Promise<void>
 
@@ -106,10 +107,21 @@ export const useStore = create<State>((set, get) => ({
   addVaultFromPicker: async () => {
     const picked = (await api.pickFolder()) as { path: string; name: string } | null
     if (!picked) return
-    const vault = (await api.addVault(picked.name, picked.path)) as Vault
-    const s = (await api.getSettings()) as AppSettings
-    get().applySettings(s)
-    await get().setActiveVault(vault.id)
+    await get().addVaultByPath(picked.path, picked.name)
+  },
+
+  addVaultByPath: async (vaultPath, name) => {
+    try {
+      const vault = (await api.addVault(name ?? '', vaultPath)) as Vault
+      const s = (await api.getSettings()) as AppSettings
+      get().applySettings(s)
+      await get().setActiveVault(vault.id)
+      return true
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      await api.showError(msg)
+      return false
+    }
   },
 
   removeVault: async (vaultId) => {

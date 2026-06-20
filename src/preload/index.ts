@@ -10,6 +10,7 @@ const api = {
   removeVault: (vaultId: string) => ipcRenderer.invoke('vault:remove', vaultId),
   watchVault: (vaultId: string) => ipcRenderer.invoke('vault:watch', vaultId),
   pickFolder: () => ipcRenderer.invoke('vault:pickFolder'),
+  icloudPath: () => ipcRenderer.invoke('vault:icloudPath'),
 
   // arquivos
   tree: (vaultId: string) => ipcRenderer.invoke('file:tree', vaultId),

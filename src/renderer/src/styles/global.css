@@ -455,6 +455,69 @@ button {
   background: var(--bg);
 }
 
+/* ---------- modal adicionar vault ---------- */
+.modal-box.add-vault {
+  min-width: 420px;
+}
+.modal-help {
+  font-size: 12px;
+  color: var(--text-soft);
+  margin: 0;
+  line-height: 1.5;
+}
+.modal-help code {
+  background: var(--hover);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+.add-vault-shortcuts {
+  display: flex;
+  gap: 8px;
+}
+.add-vault-shortcuts button {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-elev);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+.add-vault-shortcuts button:hover {
+  background: var(--hover);
+}
+.modal-btn-ok:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ---------- editor de código (source) ---------- */
+.cm-host {
+  height: 100%;
+  overflow: hidden;
+}
+.cm-host .cm-editor {
+  height: 100%;
+  font-size: 13.5px;
+}
+.cm-host .cm-gutters {
+  background: var(--bg-elev);
+  color: var(--text-soft);
+  border-right: 1px solid var(--border);
+  user-select: none;
+}
+.cm-host .cm-lineNumbers .cm-gutterElement {
+  padding: 0 8px 0 12px;
+  min-width: 28px;
+}
+:root[data-theme='dark'] .cm-host .cm-activeLine {
+  background: rgba(255, 255, 255, 0.04);
+}
+:root[data-theme='dark'] .cm-host .cm-activeLineGutter {
+  background: rgba(255, 255, 255, 0.06);
+}
+
 /* ---------- barra de formatação WYSIWYG ---------- */
 .format-toolbar {
   display: flex;

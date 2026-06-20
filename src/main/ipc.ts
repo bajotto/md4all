@@ -14,6 +14,7 @@ import {
   removeVault,
   rename,
   saveAsset,
+  suggestedIcloudPath,
   writeFile
 } from './vault'
 import type { AppSettings } from './types'
@@ -29,12 +30,14 @@ export function registerIpc(): void {
   ipcMain.handle('vault:watch', (_e, vaultId: string) => watchVault(vaultId))
   ipcMain.handle('vault:pickFolder', async () => {
     const result = await dialog.showOpenDialog({
-      properties: ['openDirectory', 'createDirectory']
+      properties: ['openDirectory', 'createDirectory'],
+      message: 'Escolha a pasta do vault (disco local, /Volumes/<share> SMB, ou iCloud)'
     })
     if (result.canceled || result.filePaths.length === 0) return null
     const folder = result.filePaths[0]
     return { path: folder, name: path.basename(folder) }
   })
+  ipcMain.handle('vault:icloudPath', () => suggestedIcloudPath())
 
   // ---- arquivos ----
   ipcMain.handle('file:tree', (_e, vaultId: string) => listTree(vaultId))

@@ -1,8 +1,22 @@
 import { promises as fs } from 'fs'
 import path from 'path'
+import os from 'os'
 import { randomUUID } from 'crypto'
 import { getSettings, setSettings } from './settings'
 import type { FileNode, Vault } from './types'
+
+/** Expande `~` para o home do usuário e normaliza o caminho. */
+function expandPath(p: string): string {
+  let out = p.trim()
+  if (out === '~') out = os.homedir()
+  else if (out.startsWith('~/')) out = path.join(os.homedir(), out.slice(2))
+  return path.resolve(out)
+}
+
+/** Caminho padrão do iCloud Drive no macOS (pasta do app, se existir). */
+export function suggestedIcloudPath(): string {
+  return path.join(os.homedir(), 'Library', 'Mobile Documents', 'com~apple~CloudDocs')
+}
 
 const TEXT_EXTS = new Set(['.md', '.markdown', '.mdown', '.mkd', '.txt'])
 const IGNORED = new Set(['.git', 'node_modules', '.obsidian', '.DS_Store'])
@@ -140,9 +154,23 @@ export async function saveAsset(
   return `assets/${candidate}`
 }
 
-export function addVault(name: string, vaultPath: string): Vault {
+export async function addVault(name: string, vaultPath: string): Promise<Vault> {
+  const abs = expandPath(vaultPath)
+  // valida que o caminho existe e é uma pasta acessível (vale para disco
+  // local, share SMB montado em /Volumes, e iCloud Drive — todos são paths).
+  let stat: import('fs').Stats
+  try {
+    stat = await fs.stat(abs)
+  } catch {
+    throw new Error(
+      `Pasta não encontrada: ${abs}\n\nPara SMB, monte o share primeiro (Finder → Ir → Conectar ao servidor) e aponte para /Volumes/<share>. Para iCloud, use ~/Library/Mobile Documents/com~apple~CloudDocs.`
+    )
+  }
+  if (!stat.isDirectory()) throw new Error(`O caminho não é uma pasta: ${abs}`)
+
   const settings = getSettings()
-  const vault: Vault = { id: randomUUID().slice(0, 8), name, path: vaultPath }
+  const finalName = name?.trim() || path.basename(abs) || 'vault'
+  const vault: Vault = { id: randomUUID().slice(0, 8), name: finalName, path: abs }
   const vaults = [...settings.vaults, vault]
   setSettings({ vaults, activeVaultId: vault.id })
   return vault

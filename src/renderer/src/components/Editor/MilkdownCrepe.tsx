@@ -36,6 +36,13 @@ export default function MilkdownCrepe({ vaultId, initialContent, onChange, apiRe
     if (!host) return
 
     let destroyed = false
+    // Só passamos a propagar mudanças DEPOIS que o editor terminou de carregar.
+    // O Crepe dispara markdownUpdated durante a montagem (parse->serialize do
+    // conteúdo inicial), o que reescreveria o arquivo de forma normalizada
+    // (escapando `\`, virando `---`->`***`, inserindo `<br/>`) só por abri-lo.
+    // Ignorando essa emissão inicial, o autosave nunca corrompe um arquivo
+    // que o usuário apenas visualizou.
+    let loaded = false
     const crepe = new Crepe({
       root: host,
       defaultValue: toDisplay(initialContent, vaultId),
@@ -53,13 +60,20 @@ export default function MilkdownCrepe({ vaultId, initialContent, onChange, apiRe
 
     crepe.on((listener) => {
       listener.markdownUpdated((_ctx, markdown) => {
-        if (destroyed) return
+        if (destroyed || !loaded) return
         onChangeRef.current(toStorage(markdown, vaultId))
       })
     })
 
     void crepe.create().then(() => {
-      if (destroyed || !apiRef) return
+      if (destroyed) return
+      // A emissão inicial do parse acontece de forma síncrona durante create();
+      // ao chegar aqui ela já passou (e foi ignorada). Liberamos no próximo
+      // tick por segurança, usando setTimeout (dispara mesmo em segundo plano).
+      setTimeout(() => {
+        loaded = true
+      }, 0)
+      if (!apiRef) return
       const editor = crepe.editor
       apiRef.current = {
         run: (key, payload) => {

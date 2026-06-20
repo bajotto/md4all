@@ -1,18 +1,21 @@
+import { useState } from 'react'
 import { useStore } from '../../store/useStore'
+import AddVaultModal from '../AddVaultModal'
 
 export default function VaultPicker(): JSX.Element {
   const vaults = useStore((s) => s.vaults)
   const activeVaultId = useStore((s) => s.activeVaultId)
   const setActiveVault = useStore((s) => s.setActiveVault)
-  const addVaultFromPicker = useStore((s) => s.addVaultFromPicker)
   const removeVault = useStore((s) => s.removeVault)
   const theme = useStore((s) => s.theme)
   const toggleTheme = useStore((s) => s.toggleTheme)
 
+  const [adding, setAdding] = useState(false)
   const active = vaults.find((v) => v.id === activeVaultId)
 
   return (
     <div className="vault-picker">
+      {adding ? <AddVaultModal onClose={() => setAdding(false)} /> : null}
       <div className="vault-row">
         <select
           className="vault-select"
@@ -26,7 +29,7 @@ export default function VaultPicker(): JSX.Element {
             </option>
           ))}
         </select>
-        <button className="icon-btn" title="Adicionar vault" onClick={() => void addVaultFromPicker()}>
+        <button className="icon-btn" title="Adicionar vault" onClick={() => setAdding(true)}>
           +
         </button>
         <button
