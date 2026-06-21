@@ -245,6 +245,7 @@ interface Transient {
   timer: ReturnType<typeof setTimeout> | null
 }
 const transientPool = new Map<string, Transient>()
+const transientConnecting = new Map<string, Promise<SftpClient>>()
 
 function transientKey(cfg: SftpConfig): string {
   return `${cfg.host}:${cfg.port || 22}:${cfg.username}`
@@ -276,17 +277,26 @@ async function getTransient(cfg: SftpConfig): Promise<SftpClient> {
     resetIdle(key)
     return existing.client
   }
-  const client = new SftpClient(`md4all-browse-${key}`)
-  await withTimeout(client.connect(await buildConnectOptions(cfg)), OP_TIMEOUT, `conectar ${cfg.host}`)
-  transientPool.set(key, { client, timer: null })
-  resetIdle(key)
-  const drop = (): void => {
-    if (transientPool.get(key)?.client === client) void closeTransient(key)
+  // evita corrida: chamadas concorrentes compartilham UMA conexão em criação
+  let pending = transientConnecting.get(key)
+  if (!pending) {
+    pending = (async () => {
+      const client = new SftpClient(`md4all-browse-${key}`)
+      await withTimeout(client.connect(await buildConnectOptions(cfg)), OP_TIMEOUT, `conectar ${cfg.host}`)
+      transientPool.set(key, { client, timer: null })
+      resetIdle(key)
+      const drop = (): void => {
+        if (transientPool.get(key)?.client === client) void closeTransient(key)
+      }
+      client.on('end', drop)
+      client.on('close', drop)
+      client.on('error', drop)
+      return client
+    })()
+    transientConnecting.set(key, pending)
+    void pending.finally(() => transientConnecting.delete(key))
   }
-  client.on('end', drop)
-  client.on('close', drop)
-  client.on('error', drop)
-  return client
+  return pending
 }
 
 export interface BrowseResult {
@@ -318,6 +328,44 @@ export async function browse(cfg: SftpConfig, remotePath?: string): Promise<Brow
 /** Fecha todas as conexões transitórias (ao fechar o picker/modal). */
 export async function browseClose(): Promise<void> {
   await Promise.all([...transientPool.keys()].map((k) => closeTransient(k)))
+}
+
+const MD_RE = /\.(md|markdown|mdown|mkd)$/i
+
+/**
+ * Há algum .md em algum descendente de `rel`? Busca em background numa conexão
+ * transitória (NÃO bloqueia a navegação), com curto-circuito no 1º .md e tetos
+ * rígidos (nº de listagens + prazo) para nunca varrer árvores enormes.
+ */
+export async function hasMarkdown(vault: Vault, rel: string): Promise<boolean> {
+  if (!vault.sftp) return false
+  const client = await getTransient(vault.sftp)
+  const deadline = Date.now() + 12_000
+  const MAX_LISTS = 120
+  let lists = 0
+  async function walk(dir: string): Promise<boolean> {
+    if (lists >= MAX_LISTS || Date.now() > deadline) return false
+    lists++
+    let entries: SftpClient.FileInfo[]
+    try {
+      entries = await withTimeout(client.list(dir), OP_TIMEOUT, `listar ${dir}`)
+    } catch {
+      return false
+    }
+    const subdirs: string[] = []
+    for (const e of entries) {
+      if (e.type === 'd') {
+        if (!skipWalkDir(e.name)) subdirs.push(path.posix.join(dir, e.name))
+      } else if (MD_RE.test(e.name)) {
+        return true // curto-circuito: achou markdown
+      }
+    }
+    for (const sd of subdirs) {
+      if (await walk(sd)) return true
+    }
+    return false
+  }
+  return walk(rel ? remoteResolve(vault, rel) : remoteRoot(vault))
 }
 
 export async function readFile(vault: Vault, rel: string): Promise<string> {

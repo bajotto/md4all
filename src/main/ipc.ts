@@ -21,6 +21,7 @@ import {
   browseSftp,
   createFile,
   createFolder,
+  hasMarkdown,
   listDir,
   listTree,
   readFile,
@@ -88,6 +89,9 @@ export function registerIpc(): void {
   // ---- arquivos ----
   ipcMain.handle('file:tree', (_e, vaultId: string) => listTree(vaultId))
   ipcMain.handle('file:listDir', (_e, vaultId: string, relPath: string) => listDir(vaultId, relPath))
+  ipcMain.handle('file:hasMarkdown', (_e, vaultId: string, relPath: string) =>
+    hasMarkdown(vaultId, relPath)
+  )
   ipcMain.handle('file:read', (_e, vaultId: string, relPath: string) => readFile(vaultId, relPath))
   ipcMain.handle('file:write', async (_e, vaultId: string, relPath: string, content: string) => {
     await writeFile(vaultId, relPath, content)

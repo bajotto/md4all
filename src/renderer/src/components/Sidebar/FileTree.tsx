@@ -65,7 +65,9 @@ function TreeNode({ vaultId, node, depth, openModal }: {
       <div className="tree-folder">
         <div className="tree-row" style={{ paddingLeft: depth * 12 + 8 }} onClick={toggleOpen}>
           <span className="tree-caret">{open ? '▾' : '▸'}</span>
-          <span className="tree-label">{node.name}</span>
+          <span className={`tree-label ${node.hasMd ? 'has-md' : ''}`} title={node.hasMd ? 'Contém markdown' : undefined}>
+            {node.name}
+          </span>
           <span className="tree-actions" onClick={(e) => e.stopPropagation()}>
             <button title="Novo arquivo" onClick={askNewFile}>+</button>
             <button title="Nova pasta" onClick={askNewFolder}>⊞</button>

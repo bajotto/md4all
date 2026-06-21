@@ -1386,3 +1386,6 @@ button {
 }
 .rdir-row:hover { background: var(--accent-soft); }
 .rdir-icon { flex-shrink: 0; }
+
+/* pastas que contêm markdown em algum descendente: destaque por cor */
+.tree-label.has-md { color: var(--accent); font-weight: 600; }

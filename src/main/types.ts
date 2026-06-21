@@ -24,6 +24,7 @@ export interface FileNode {
   path: string // relativo à raiz do vault, usando "/"
   isDir: boolean
   children?: FileNode[]
+  hasMd?: boolean // diretório contém .md em algum descendente (p/ destaque na árvore)
 }
 
 export interface SearchHit {

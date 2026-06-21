@@ -12,9 +12,27 @@ import type {
   Vault
 } from '../types'
 import { tabKey } from '../types'
-import { setChildrenAt } from './treeUtil'
+import { setChildrenAt, setHasMdAt } from './treeUtil'
 
 const api = window.api
+
+// Sondagem de "pasta tem .md?" para vaults SFTP: serial (1 por vez, pois a
+// conexão transitória não é reentrante) e em background — nunca bloqueia a UI.
+const probedMd = new Set<string>()
+let probeChain: Promise<void> = Promise.resolve()
+function queueMdProbe(vaultId: string, relPath: string, apply: (hasMd: boolean) => void): void {
+  const key = `${vaultId}::${relPath}`
+  if (probedMd.has(key)) return
+  probedMd.add(key)
+  probeChain = probeChain.then(async () => {
+    try {
+      const has = (await api.hasMarkdown(vaultId, relPath)) as boolean
+      if (has) apply(true)
+    } catch {
+      /* sondagem é best-effort */
+    }
+  })
+}
 
 interface ActiveRef {
   vaultId: string
@@ -48,6 +66,7 @@ interface State {
   init: () => Promise<void>
   loadTree: (vaultId: string) => Promise<void>
   loadDir: (vaultId: string, relPath: string) => Promise<void>
+  probeMd: (vaultId: string, nodes: FileNode[]) => void
   refreshTree: (vaultId: string) => Promise<void>
   toggleVaultExpanded: (vaultId: string) => Promise<void>
   addVaultFromPicker: () => Promise<void>
@@ -146,6 +165,7 @@ export const useStore = create<State>((set, get) => ({
       const isSftp = get().vaults.find((v) => v.id === vaultId)?.kind === 'sftp'
       const tree = (await (isSftp ? api.listDir(vaultId, '') : api.tree(vaultId))) as FileNode[]
       set({ trees: { ...get().trees, [vaultId]: tree } })
+      if (isSftp) get().probeMd(vaultId, tree)
       // constrói o índice de PKM em segundo plano (wikilinks/tags/backlinks)
       void api
         .indexBuild(vaultId)
@@ -169,10 +189,23 @@ export const useStore = create<State>((set, get) => ({
       const children = (await api.listDir(vaultId, relPath)) as FileNode[]
       const tree = get().trees[vaultId]
       if (tree) set({ trees: { ...get().trees, [vaultId]: setChildrenAt(tree, relPath, children) } })
+      if (get().vaults.find((v) => v.id === vaultId)?.kind === 'sftp') get().probeMd(vaultId, children)
     } catch (err) {
       await api.showError(`Falha ao listar a pasta:\n${err instanceof Error ? err.message : String(err)}`)
     } finally {
       set({ loadingDir: { ...get().loadingDir, [key]: false } })
+    }
+  },
+
+  // enfileira sondagem "tem .md?" para cada filho-diretório (vault SFTP); ao
+  // confirmar, marca o nó e a árvore re-renderiza com a pasta destacada.
+  probeMd: (vaultId, nodes) => {
+    for (const n of nodes) {
+      if (!n.isDir || n.hasMd !== undefined) continue
+      queueMdProbe(vaultId, n.path, (hasMd) => {
+        const tree = get().trees[vaultId]
+        if (tree) set({ trees: { ...get().trees, [vaultId]: setHasMdAt(tree, n.path, hasMd) } })
+      })
     }
   },
 

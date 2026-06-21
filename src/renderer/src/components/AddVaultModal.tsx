@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useStore } from '../store/useStore'
 import RemoteDirPicker from './RemoteDirPicker'
 import type { SftpInput } from '../types'
@@ -16,6 +16,8 @@ export default function AddVaultModal({ onClose }: Props): JSX.Element {
   const [busy, setBusy] = useState(false)
   const [testMsg, setTestMsg] = useState<string | null>(null)
   const [browsing, setBrowsing] = useState(false)
+  // guard síncrono contra double-submit (estado `busy` atualiza tarde demais p/ clique duplo)
+  const submitting = useRef(false)
 
   // local
   const [path, setPath] = useState('')
@@ -70,15 +72,20 @@ export default function AddVaultModal({ onClose }: Props): JSX.Element {
   }
 
   const submit = async (): Promise<void> => {
-    if (busy) return
+    if (submitting.current) return
+    submitting.current = true
     setBusy(true)
     let ok = false
-    if (mode === 'local') {
-      if (path.trim()) ok = await addVaultByPath(path.trim())
-    } else if (sftpValid) {
-      ok = await addSftpVault(buildInput())
+    try {
+      if (mode === 'local') {
+        if (path.trim()) ok = await addVaultByPath(path.trim())
+      } else if (sftpValid) {
+        ok = await addSftpVault(buildInput())
+      }
+    } finally {
+      setBusy(false)
+      submitting.current = false
     }
-    setBusy(false)
     if (ok) onClose()
   }
 

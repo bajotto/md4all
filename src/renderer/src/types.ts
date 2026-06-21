@@ -12,6 +12,7 @@ export interface FileNode {
   path: string
   isDir: boolean
   children?: FileNode[]
+  hasMd?: boolean // diretório contém .md em algum descendente (destaque na árvore)
 }
 
 export interface SearchHit {

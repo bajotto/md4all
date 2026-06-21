@@ -17,3 +17,14 @@ export function setChildrenAt(
     return n
   })
 }
+
+/** Marca `hasMd` no nó em `targetPath` imutavelmente (resultado da sondagem SFTP). */
+export function setHasMdAt(nodes: FileNode[], targetPath: string, hasMd: boolean): FileNode[] {
+  return nodes.map((n) => {
+    if (n.path === targetPath) return { ...n, hasMd }
+    if (n.isDir && n.children && targetPath.startsWith(n.path + '/')) {
+      return { ...n, children: setHasMdAt(n.children, targetPath, hasMd) }
+    }
+    return n
+  })
+}

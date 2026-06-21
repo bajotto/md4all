@@ -79,7 +79,14 @@ async function localListTree(vault: Vault): Promise<FileNode[]> {
       if (IGNORED.has(entry.name) || entry.name.startsWith('.')) continue
       const abs = path.join(dir, entry.name)
       if (entry.isDirectory()) {
-        nodes.push({ name: entry.name, path: toRel(root, abs), isDir: true, children: await walk(abs) })
+        const children = await walk(abs)
+        nodes.push({
+          name: entry.name,
+          path: toRel(root, abs),
+          isDir: true,
+          children,
+          hasMd: dirHasMd(children)
+        })
       } else if (TEXT_EXTS.has(path.extname(entry.name).toLowerCase())) {
         nodes.push({ name: entry.name, path: toRel(root, abs), isDir: false })
       }
@@ -91,6 +98,12 @@ async function localListTree(vault: Vault): Promise<FileNode[]> {
     return nodes
   }
   return walk(root)
+}
+
+const MD_RE = /\.(md|markdown|mdown|mkd)$/i
+/** Um diretório "tem md" se algum descendente já carregado é um arquivo markdown. */
+function dirHasMd(children: FileNode[]): boolean {
+  return children.some((c) => (c.isDir ? c.hasMd === true : MD_RE.test(c.path)))
 }
 
 /** Coleta plana de caminhos relativos cujos arquivos batem com `exts` (vault local). */
@@ -152,6 +165,34 @@ export async function listTree(vaultId: string): Promise<FileNode[]> {
 export async function listDir(vaultId: string, relPath: string): Promise<FileNode[]> {
   const vault = getVault(vaultId)
   return isSftp(vault) ? sftp.listDir(vault, relPath) : localListDir(vault, relPath)
+}
+
+/** Há .md em algum descendente de `relPath`? (sondagem p/ destacar pastas na árvore SFTP) */
+export async function hasMarkdown(vaultId: string, relPath: string): Promise<boolean> {
+  const vault = getVault(vaultId)
+  if (isSftp(vault)) return sftp.hasMarkdown(vault, relPath)
+  // local: a árvore já carrega hasMd; fallback rápido por fs se chamado
+  const start = resolveInVault(vaultId, relPath || '.')
+  const MAX = 500
+  let n = 0
+  async function walk(dir: string): Promise<boolean> {
+    if (n++ > MAX) return false
+    let entries: import('fs').Dirent[]
+    try {
+      entries = await fs.readdir(dir, { withFileTypes: true })
+    } catch {
+      return false
+    }
+    const subdirs: string[] = []
+    for (const e of entries) {
+      if (e.name.startsWith('.') || IGNORED.has(e.name)) continue
+      if (e.isDirectory()) subdirs.push(path.join(dir, e.name))
+      else if (/\.(md|markdown|mdown|mkd)$/i.test(e.name)) return true
+    }
+    for (const sd of subdirs) if (await walk(sd)) return true
+    return false
+  }
+  return walk(start)
 }
 
 export async function readFile(vaultId: string, relPath: string): Promise<string> {
@@ -285,11 +326,25 @@ export async function addSftpVault(input: SftpInput): Promise<Vault> {
   // valida a conexão antes de salvar
   await sftp.testConnection(cfg, input.rootPath?.trim() || '.')
   const settings = getSettings()
+  const rootPath = input.rootPath?.trim() || '.'
+  // defesa contra duplicata (ex.: double-submit): se já existe vault idêntico, reusa
+  const dup = settings.vaults.find(
+    (v) =>
+      v.kind === 'sftp' &&
+      v.path === rootPath &&
+      v.sftp?.host === cfg.host &&
+      (v.sftp?.port || 22) === (cfg.port || 22) &&
+      v.sftp?.username === cfg.username
+  )
+  if (dup) {
+    setSettings({ activeVaultId: dup.id })
+    return dup
+  }
   const vault: Vault = {
     id: randomUUID().slice(0, 8),
     name: input.name?.trim() || `${input.username}@${input.host}`,
     kind: 'sftp',
-    path: input.rootPath?.trim() || '.',
+    path: rootPath,
     sftp: cfg
   }
   setSettings({ vaults: [...settings.vaults, vault], activeVaultId: vault.id })
