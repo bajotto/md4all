@@ -16,7 +16,7 @@ export function encryptSecret(plain: string): string {
   return 'b64:' + Buffer.from(plain, 'utf8').toString('base64')
 }
 
-function decryptSecret(enc?: string): string | undefined {
+export function decryptSecret(enc?: string): string | undefined {
   if (!enc) return undefined
   if (enc.startsWith('enc:')) {
     try {
@@ -174,6 +174,32 @@ export async function listTree(vault: Vault): Promise<FileNode[]> {
       return nodes
     }
     return walk(remoteRoot(vault))
+  })
+}
+
+/** Coleta plana de caminhos relativos cujos arquivos batem com `exts` (vault remoto). */
+export async function collectPaths(vault: Vault, exts: Set<string>): Promise<string[]> {
+  return withClient(vault, async (client) => {
+    const out: string[] = []
+    async function walk(dir: string): Promise<void> {
+      let entries: SftpClient.FileInfo[]
+      try {
+        entries = await client.list(dir)
+      } catch {
+        return
+      }
+      for (const e of entries) {
+        const abs = path.posix.join(dir, e.name)
+        if (e.type === 'd') {
+          if (IGNORED.has(e.name) || e.name.startsWith('.') || e.name.startsWith('_backup_')) continue
+          await walk(abs)
+        } else if (exts.has(path.extname(e.name).toLowerCase())) {
+          out.push(toRel(vault, abs))
+        }
+      }
+    }
+    await walk(remoteRoot(vault))
+    return out
   })
 }
 

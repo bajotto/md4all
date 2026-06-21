@@ -9,6 +9,20 @@ import type { FileNode, SftpConfig, SftpInput, Vault } from './types'
 const TEXT_EXTS = new Set(['.md', '.markdown', '.mdown', '.mkd', '.txt'])
 const IGNORED = new Set(['.git', 'node_modules', '.obsidian', '.DS_Store'])
 
+/** Extensões de código consideradas na análise doc↔código. */
+export const CODE_EXTS = new Set([
+  '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.py', '.go', '.rs', '.java',
+  '.rb', '.php', '.c', '.h', '.cpp', '.hpp', '.cc', '.cs', '.swift', '.kt',
+  '.json', '.yaml', '.yml', '.toml', '.sh', '.sql', '.vue', '.svelte'
+])
+
+/** Pastas extras ignoradas na varredura de código (além de IGNORED). */
+const CODE_IGNORED = new Set(['dist', 'out', 'build', 'coverage', '.next', '.cache', 'vendor', 'assets'])
+
+function shouldSkipDir(name: string): boolean {
+  return IGNORED.has(name) || CODE_IGNORED.has(name) || name.startsWith('.') || name.startsWith('_backup_')
+}
+
 /** Expande `~` para o home do usuário e normaliza o caminho. */
 function expandPath(p: string): string {
   let out = p.trim()
@@ -79,6 +93,31 @@ async function localListTree(vault: Vault): Promise<FileNode[]> {
   return walk(root)
 }
 
+/** Coleta plana de caminhos relativos cujos arquivos batem com `exts` (vault local). */
+async function localCollectPaths(vault: Vault, exts: Set<string>): Promise<string[]> {
+  const root = path.resolve(vault.path)
+  const out: string[] = []
+  async function walk(dir: string): Promise<void> {
+    let entries: import('fs').Dirent[]
+    try {
+      entries = await fs.readdir(dir, { withFileTypes: true })
+    } catch {
+      return
+    }
+    for (const entry of entries) {
+      const abs = path.join(dir, entry.name)
+      if (entry.isDirectory()) {
+        if (shouldSkipDir(entry.name)) continue
+        await walk(abs)
+      } else if (exts.has(path.extname(entry.name).toLowerCase())) {
+        out.push(toRel(root, abs))
+      }
+    }
+  }
+  await walk(root)
+  return out
+}
+
 // ---------------- dispatch ----------------
 export async function listTree(vaultId: string): Promise<FileNode[]> {
   const vault = getVault(vaultId)
@@ -89,6 +128,12 @@ export async function readFile(vaultId: string, relPath: string): Promise<string
   const vault = getVault(vaultId)
   if (isSftp(vault)) return sftp.readFile(vault, relPath)
   return fs.readFile(resolveInVault(vaultId, relPath), 'utf-8')
+}
+
+/** Caminhos relativos de todos os arquivos com extensão em `exts` (local ou SFTP). */
+export async function collectPaths(vaultId: string, exts: Set<string>): Promise<string[]> {
+  const vault = getVault(vaultId)
+  return isSftp(vault) ? sftp.collectPaths(vault, exts) : localCollectPaths(vault, exts)
 }
 
 export async function readAssetBinary(vaultId: string, relPath: string): Promise<Buffer> {

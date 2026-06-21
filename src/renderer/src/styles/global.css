@@ -1142,3 +1142,166 @@ button {
   color: #fff;
   font-size: 13px;
 }
+
+/* ===== Análise de documentação por LLM ===== */
+.doc-modal {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  width: min(1100px, 92vw);
+  height: min(760px, 88vh);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.28);
+  overflow: hidden;
+}
+.doc-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elev);
+}
+.doc-modal-title { font-size: 14px; font-weight: 600; }
+.doc-modal-spacer { flex: 1; }
+.doc-modal-header select {
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+}
+.doc-modal-body { flex: 1; min-height: 0; display: flex; }
+.doc-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  text-align: center;
+  padding: 32px;
+  color: var(--text-soft);
+}
+.doc-center p { max-width: 520px; margin: 0; line-height: 1.5; }
+
+.doc-spinner {
+  width: 28px; height: 28px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: doc-spin 0.8s linear infinite;
+}
+@keyframes doc-spin { to { transform: rotate(360deg); } }
+.doc-progress {
+  width: 280px; height: 6px;
+  background: var(--bg-elev);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.doc-progress-bar { height: 100%; background: var(--accent); transition: width 0.3s ease; }
+
+.doc-split { flex: 1; min-height: 0; display: flex; }
+.doc-left {
+  width: 340px;
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 8px;
+  background: var(--bg-side);
+}
+.doc-right { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+
+.doc-report { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.doc-report-sec { font-size: 12px; }
+.doc-report-sec summary { cursor: pointer; font-weight: 600; padding: 4px 2px; }
+.doc-report-sec ul { margin: 2px 0 6px; padding-left: 18px; color: var(--text-soft); }
+.doc-report-sec li { margin: 2px 0; line-height: 1.4; }
+.doc-count {
+  display: inline-block; min-width: 16px; text-align: center;
+  background: var(--accent-soft); color: var(--accent);
+  border-radius: 8px; font-size: 11px; padding: 0 5px;
+}
+
+.doc-tree-title {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--text-soft); padding: 8px 4px 4px; font-weight: 600;
+}
+.doc-tree { font-size: 13px; }
+.doc-tree-row {
+  display: flex; align-items: center; gap: 4px;
+  padding: 3px 4px; border-radius: 4px; cursor: pointer;
+}
+.doc-tree-row:hover { background: var(--bg-elev); }
+.doc-tree-row.file.active { background: var(--accent-soft); color: var(--accent); }
+.doc-tree-row.removed .tree-label { text-decoration: line-through; opacity: 0.7; }
+.doc-tree-row .tree-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doc-badge {
+  font-size: 10px; padding: 0 6px; border-radius: 8px; font-weight: 600;
+}
+.doc-badge.created { background: #e6f6ec; color: #1a7f3c; }
+.doc-badge.updated { background: #fff3da; color: #9a6b00; }
+.doc-badge.removed { background: #fde8e8; color: #b3261e; }
+.doc-badge.unchanged { background: var(--bg-elev); color: var(--text-soft); }
+:root[data-theme='dark'] .doc-badge.created { background: #16361f; color: #5ad17e; }
+:root[data-theme='dark'] .doc-badge.updated { background: #3a2f12; color: #e0b34d; }
+:root[data-theme='dark'] .doc-badge.removed { background: #3a1b1a; color: #f08079; }
+
+.doc-right-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--bg-elev);
+}
+.doc-right-path { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
+.doc-tabs { display: flex; gap: 4px; }
+.doc-tabs button {
+  padding: 3px 12px; border: 1px solid var(--border); background: var(--bg);
+  color: var(--text-soft); border-radius: 6px; font-size: 12px;
+}
+.doc-tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.doc-rationale {
+  margin: 0; padding: 8px 12px; font-size: 12px; color: var(--text-soft);
+  border-bottom: 1px solid var(--border); background: var(--bg-side);
+}
+.doc-content {
+  flex: 1; margin: 0; padding: 12px 14px; overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px; line-height: 1.55; white-space: pre-wrap; word-break: break-word;
+}
+
+.doc-diff { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.doc-diff-stat { padding: 6px 12px; font-size: 12px; border-bottom: 1px solid var(--border); }
+.doc-diff-stat .add { color: #1a7f3c; font-weight: 600; }
+.doc-diff-stat .del { color: #b3261e; font-weight: 600; }
+.doc-diff-body {
+  flex: 1; margin: 0; overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px;
+}
+.diff-line { display: flex; padding: 0 8px; white-space: pre-wrap; word-break: break-word; line-height: 1.5; }
+.diff-gutter { width: 14px; flex-shrink: 0; color: var(--text-soft); user-select: none; }
+.diff-line.add { background: rgba(26, 127, 60, 0.12); }
+.diff-line.del { background: rgba(179, 38, 30, 0.12); }
+
+.doc-modal-footer {
+  border-top: 1px solid var(--border); padding: 10px 14px;
+  display: flex; flex-direction: column; gap: 8px; background: var(--bg-elev);
+}
+.doc-review { font-size: 12px; line-height: 1.45; }
+.doc-review.ok { color: #1a7f3c; }
+.doc-review.block { color: #b3261e; }
+.doc-review-item { color: var(--text); }
+.doc-review-note { color: var(--text-soft); }
+.doc-footer-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.doc-modal-footer code {
+  background: var(--bg-side); padding: 1px 5px; border-radius: 4px; font-size: 11px;
+}
+
+/* resumo de uso/custo no rodapé da análise */
+.doc-usage { font-size: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
+.doc-usage > summary { cursor: pointer; padding: 6px 10px; font-weight: 600; }
+.doc-usage-grid { display: flex; flex-direction: column; gap: 3px; padding: 4px 10px 8px; color: var(--text-soft); }
+.doc-usage-grid > div { display: flex; gap: 8px; }
+.doc-usage-k {
+  display: inline-block; min-width: 72px; color: var(--text); font-weight: 600;
+}
+.doc-usage-grid strong { color: var(--accent); }

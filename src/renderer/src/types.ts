@@ -68,3 +68,64 @@ export interface SftpInput {
 export function tabKey(vaultId: string, path: string): string {
   return `${vaultId}::${path}`
 }
+
+// ---------- LLM / análise de documentação ----------
+export interface LlmConfigView {
+  hasToken: boolean
+  modelPrimary: string
+  modelReviewer: string
+}
+
+export type ProposedStatus = 'created' | 'updated' | 'unchanged' | 'removed'
+
+export interface ProposedFile {
+  path: string
+  content: string
+  rationale: string
+  status: ProposedStatus
+}
+
+export interface CodeMismatch {
+  doc: string
+  claim: string
+  evidence: string
+}
+
+export interface AnalysisReport {
+  coherence: string[]
+  contradictions: string[]
+  duplications: string[]
+  codeMismatches: CodeMismatch[]
+  proposedTree: ProposedFile[]
+}
+
+export interface ReviewResult {
+  approved: boolean
+  blocking: string[]
+  notes: string[]
+}
+
+export interface ApplyResult {
+  backupDir: string
+  created: string[]
+  updated: string[]
+  removed: string[]
+}
+
+export interface LlmUsage {
+  promptTokens: number
+  completionTokens: number
+  cost: number
+  calls: number
+}
+
+export interface AnalyzeResult {
+  report: AnalysisReport
+  usage: LlmUsage
+  stats: { docCount: number; codeCount: number }
+}
+
+export interface ReviewOutcome {
+  review: ReviewResult
+  usage: LlmUsage
+}

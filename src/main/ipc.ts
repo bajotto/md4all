@@ -4,6 +4,10 @@ import { getSettings, setSettings } from './settings'
 import { exportHtml, exportPdf } from './export'
 import { search } from './search'
 import { watchVault } from './watcher'
+import { decryptSecret, encryptSecret } from './sftp'
+import { validateLlmConfig } from './llm'
+import { analyze, applyProposal, reviewProposal } from './docAnalysis'
+import type { AnalysisReport } from './types'
 import {
   addSftpVault,
   addVault,
@@ -131,5 +135,54 @@ export function registerIpc(): void {
   )
   ipcMain.handle('export:pdf', (_e, vaultId: string, relPath: string, markdown: string) =>
     exportPdf(vaultId, relPath, markdown)
+  )
+
+  // ---- LLM (OpenRouter) ----
+  ipcMain.handle('llm:getConfig', () => {
+    const llm = getSettings().llm ?? {}
+    return {
+      hasToken: !!llm.encToken,
+      modelPrimary: llm.modelPrimary ?? '',
+      modelReviewer: llm.modelReviewer ?? ''
+    }
+  })
+  ipcMain.handle(
+    'llm:validate',
+    (_e, input: { token: string; modelPrimary: string; modelReviewer: string }) =>
+      validateLlmConfig(input)
+  )
+  ipcMain.handle(
+    'llm:saveConfig',
+    async (_e, input: { token: string; modelPrimary: string; modelReviewer: string }) => {
+      // token vazio + token já salvo => usa o existente (usuário só editou os modelos)
+      const existing = getSettings().llm ?? {}
+      const newToken = input.token?.trim()
+      const effectiveToken = newToken || decryptSecret(existing.encToken) || ''
+      const result = await validateLlmConfig({
+        token: effectiveToken,
+        modelPrimary: input.modelPrimary,
+        modelReviewer: input.modelReviewer
+      })
+      if (!result.ok) return result
+      setSettings({
+        llm: {
+          encToken: newToken ? encryptSecret(newToken) : existing.encToken,
+          modelPrimary: input.modelPrimary.trim(),
+          modelReviewer: input.modelReviewer.trim()
+        }
+      })
+      return result
+    }
+  )
+
+  // ---- análise de documentação por LLM ----
+  ipcMain.handle('doc:analyze', (e, vaultId: string) =>
+    analyze(vaultId, (msg, pct) => e.sender.send('doc:progress', { msg, pct }))
+  )
+  ipcMain.handle('doc:review', (e, vaultId: string, report: AnalysisReport) =>
+    reviewProposal(vaultId, report, (msg, pct) => e.sender.send('doc:progress', { msg, pct }))
+  )
+  ipcMain.handle('doc:apply', (e, vaultId: string, report: AnalysisReport) =>
+    applyProposal(vaultId, report, (msg, pct) => e.sender.send('doc:progress', { msg, pct }))
   )
 }

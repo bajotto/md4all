@@ -59,6 +59,22 @@ const api = {
   exportPdf: (vaultId: string, relPath: string, markdown: string) =>
     ipcRenderer.invoke('export:pdf', vaultId, relPath, markdown),
 
+  // LLM (OpenRouter) + análise de documentação
+  llmGetConfig: () => ipcRenderer.invoke('llm:getConfig'),
+  llmValidate: (input: unknown) => ipcRenderer.invoke('llm:validate', input),
+  llmSaveConfig: (input: unknown) => ipcRenderer.invoke('llm:saveConfig', input),
+  docAnalyze: (vaultId: string) => ipcRenderer.invoke('doc:analyze', vaultId),
+  docReview: (vaultId: string, report: unknown) =>
+    ipcRenderer.invoke('doc:review', vaultId, report),
+  docApply: (vaultId: string, report: unknown) => ipcRenderer.invoke('doc:apply', vaultId, report),
+  onDocProgress: (cb: (payload: { msg: string; pct?: number }) => void) => {
+    const listener = (_e: unknown, payload: { msg: string; pct?: number }): void => cb(payload)
+    ipcRenderer.on('doc:progress', listener)
+    return () => {
+      ipcRenderer.removeListener('doc:progress', listener)
+    }
+  },
+
   // comandos do menu nativo (find/replace)
   onMenu: (cb: (cmd: string) => void) => {
     const listener = (_e: unknown, cmd: string): void => cb(cmd)
