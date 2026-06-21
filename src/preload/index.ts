@@ -23,6 +23,7 @@ const api = {
 
   // arquivos
   tree: (vaultId: string) => ipcRenderer.invoke('file:tree', vaultId),
+  listDir: (vaultId: string, relPath: string) => ipcRenderer.invoke('file:listDir', vaultId, relPath),
   read: (vaultId: string, relPath: string) => ipcRenderer.invoke('file:read', vaultId, relPath),
   write: (vaultId: string, relPath: string, content: string) =>
     ipcRenderer.invoke('file:write', vaultId, relPath, content),

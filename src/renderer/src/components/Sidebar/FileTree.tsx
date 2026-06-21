@@ -25,8 +25,17 @@ function TreeNode({ vaultId, node, depth, openModal }: {
   const deletePath = useStore((s) => s.deletePath)
   const createFile = useStore((s) => s.createFile)
   const createFolder = useStore((s) => s.createFolder)
+  const loadDir = useStore((s) => s.loadDir)
+  const loadingChildren = useStore((s) => s.loadingDir[`${vaultId}::${node.path}`] ?? false)
 
   const [open, setOpen] = useState(false)
+
+  // expande/recolhe; carrega filhos sob demanda (árvore SFTP preguiçosa)
+  const toggleOpen = (): void => {
+    const next = !open
+    setOpen(next)
+    if (next && node.isDir && node.children === undefined) void loadDir(vaultId, node.path)
+  }
 
   const askRename = (): void => openModal({
     title: `Renomear "${node.name}"`,
@@ -54,7 +63,7 @@ function TreeNode({ vaultId, node, depth, openModal }: {
   if (node.isDir) {
     return (
       <div className="tree-folder">
-        <div className="tree-row" style={{ paddingLeft: depth * 12 + 8 }} onClick={() => setOpen((o) => !o)}>
+        <div className="tree-row" style={{ paddingLeft: depth * 12 + 8 }} onClick={toggleOpen}>
           <span className="tree-caret">{open ? '▾' : '▸'}</span>
           <span className="tree-label">{node.name}</span>
           <span className="tree-actions" onClick={(e) => e.stopPropagation()}>
@@ -64,9 +73,17 @@ function TreeNode({ vaultId, node, depth, openModal }: {
             <button title="Apagar" onClick={() => void askDelete()}>🗑</button>
           </span>
         </div>
-        {open ? (node.children ?? []).map((c) => (
-          <TreeNode key={c.path} vaultId={vaultId} node={c} depth={depth + 1} openModal={openModal} />
-        )) : null}
+        {open ? (
+          node.children === undefined ? (
+            loadingChildren ? (
+              <p className="tree-empty" style={{ paddingLeft: depth * 12 + 22 }}>Carregando…</p>
+            ) : null
+          ) : (
+            node.children.map((c) => (
+              <TreeNode key={c.path} vaultId={vaultId} node={c} depth={depth + 1} openModal={openModal} />
+            ))
+          )
+        ) : null}
       </div>
     )
   }

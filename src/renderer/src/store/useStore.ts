@@ -12,6 +12,7 @@ import type {
   Vault
 } from '../types'
 import { tabKey } from '../types'
+import { setChildrenAt } from './treeUtil'
 
 const api = window.api
 
@@ -28,6 +29,7 @@ interface State {
   trees: Record<string, FileNode[]>
   expanded: Record<string, boolean>
   loadingTree: Record<string, boolean>
+  loadingDir: Record<string, boolean> // "vaultId::relPath" → carregando filhos (lazy SFTP)
 
   tabs: OpenTab[]
   active: ActiveRef | null
@@ -45,6 +47,7 @@ interface State {
   // bootstrap / config
   init: () => Promise<void>
   loadTree: (vaultId: string) => Promise<void>
+  loadDir: (vaultId: string, relPath: string) => Promise<void>
   refreshTree: (vaultId: string) => Promise<void>
   toggleVaultExpanded: (vaultId: string) => Promise<void>
   addVaultFromPicker: () => Promise<void>
@@ -95,6 +98,7 @@ export const useStore = create<State>((set, get) => ({
   trees: {},
   expanded: {},
   loadingTree: {},
+  loadingDir: {},
   tabs: [],
   active: null,
   editorMode: 'wysiwyg',
@@ -137,15 +141,38 @@ export const useStore = create<State>((set, get) => ({
   loadTree: async (vaultId) => {
     set({ loadingTree: { ...get().loadingTree, [vaultId]: true } })
     try {
-      const tree = (await api.tree(vaultId)) as FileNode[]
+      // SFTP: carrega só o nível raiz (subpastas carregam ao expandir — evita
+      // varrer um repo remoto inteiro). Local: árvore completa (rápido, disco).
+      const isSftp = get().vaults.find((v) => v.id === vaultId)?.kind === 'sftp'
+      const tree = (await (isSftp ? api.listDir(vaultId, '') : api.tree(vaultId))) as FileNode[]
       set({ trees: { ...get().trees, [vaultId]: tree } })
       // constrói o índice de PKM em segundo plano (wikilinks/tags/backlinks)
-      void api.indexBuild(vaultId).then(() => get().loadBacklinks())
+      void api
+        .indexBuild(vaultId)
+        .then(() => get().loadBacklinks())
+        .catch(() => {
+          /* índice pode falhar em vault remoto grande; não bloqueia a árvore */
+        })
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       await api.showError(`Falha ao listar o vault:\n${msg}`)
     } finally {
       set({ loadingTree: { ...get().loadingTree, [vaultId]: false } })
+    }
+  },
+
+  loadDir: async (vaultId, relPath) => {
+    const key = `${vaultId}::${relPath}`
+    if (get().loadingDir[key]) return
+    set({ loadingDir: { ...get().loadingDir, [key]: true } })
+    try {
+      const children = (await api.listDir(vaultId, relPath)) as FileNode[]
+      const tree = get().trees[vaultId]
+      if (tree) set({ trees: { ...get().trees, [vaultId]: setChildrenAt(tree, relPath, children) } })
+    } catch (err) {
+      await api.showError(`Falha ao listar a pasta:\n${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      set({ loadingDir: { ...get().loadingDir, [key]: false } })
     }
   },
 

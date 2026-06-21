@@ -118,10 +118,40 @@ async function localCollectPaths(vault: Vault, exts: Set<string>): Promise<strin
   return out
 }
 
+async function localListDir(vault: Vault, relPath: string): Promise<FileNode[]> {
+  const root = path.resolve(vault.path)
+  const dir = relPath ? path.resolve(root, relPath.replace(/^[/\\]+/, '')) : root
+  let entries: import('fs').Dirent[]
+  try {
+    entries = await fs.readdir(dir, { withFileTypes: true })
+  } catch {
+    return []
+  }
+  const nodes: FileNode[] = []
+  for (const entry of entries) {
+    if (IGNORED.has(entry.name) || entry.name.startsWith('.')) continue
+    const abs = path.join(dir, entry.name)
+    if (entry.isDirectory()) nodes.push({ name: entry.name, path: toRel(root, abs), isDir: true })
+    else if (TEXT_EXTS.has(path.extname(entry.name).toLowerCase()))
+      nodes.push({ name: entry.name, path: toRel(root, abs), isDir: false })
+  }
+  nodes.sort((a, b) => {
+    if (a.isDir !== b.isDir) return a.isDir ? -1 : 1
+    return a.name.localeCompare(b.name)
+  })
+  return nodes
+}
+
 // ---------------- dispatch ----------------
 export async function listTree(vaultId: string): Promise<FileNode[]> {
   const vault = getVault(vaultId)
   return isSftp(vault) ? sftp.listTree(vault) : localListTree(vault)
+}
+
+/** Lista um nível (filhos imediatos) — usado para carregar a árvore SFTP sob demanda. */
+export async function listDir(vaultId: string, relPath: string): Promise<FileNode[]> {
+  const vault = getVault(vaultId)
+  return isSftp(vault) ? sftp.listDir(vault, relPath) : localListDir(vault, relPath)
 }
 
 export async function readFile(vaultId: string, relPath: string): Promise<string> {

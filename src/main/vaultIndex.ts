@@ -1,4 +1,4 @@
-import { listTree, readFile } from './vault'
+import { getVault, isSftp, listTree, readFile } from './vault'
 import type { FileNode } from './types'
 
 /** Metadados extraídos de uma nota markdown. */
@@ -142,6 +142,12 @@ async function readNote(vaultId: string, relPath: string): Promise<NoteMeta | nu
 
 /** (Re)constrói o índice completo de um vault. */
 export async function buildIndex(vaultId: string): Promise<void> {
+  // Vaults remotos (SFTP) NÃO são indexados: exigiria varrer e ler toda a
+  // árvore por rede a cada carga. PKM (wikilinks/tags/backlinks) é local-only.
+  if (isSftp(getVault(vaultId))) {
+    cache.set(vaultId, { notes: new Map() })
+    return
+  }
   const tree = await listTree(vaultId)
   const files: string[] = []
   collectFiles(tree, files)

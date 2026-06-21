@@ -7,7 +7,11 @@ import type { FileNode, SftpConfig, Vault } from './types'
 const TEXT_EXTS = new Set(['.md', '.markdown', '.mdown', '.mkd', '.txt'])
 const IGNORED = new Set(['.git', 'node_modules', '.obsidian', '.DS_Store'])
 // pastas pesadas que não devem ser varridas na árvore (evita walk lento/travado)
-const HEAVY_DIRS = new Set(['dist', 'build', 'out', '.next', 'coverage', 'vendor', 'target', '.cache'])
+const HEAVY_DIRS = new Set([
+  'dist', 'build', 'out', '.next', 'coverage', 'vendor', 'target', '.cache',
+  '__pycache__', '.venv', 'venv', 'site-packages', '__pypackages__',
+  '.mypy_cache', '.pytest_cache', '.tox', '.gradle', '.terraform'
+])
 
 function skipWalkDir(name: string): boolean {
   return IGNORED.has(name) || HEAVY_DIRS.has(name) || name.startsWith('.') || name.startsWith('_backup_')
@@ -161,6 +165,35 @@ function toRel(vault: Vault, abs: string): string {
 }
 
 // ---------- operações de arquivo ----------
+/**
+ * Lista UM nível do vault remoto. Diretórios voltam SEM `children` (undefined =
+ * "ainda não carregado") para que a árvore seja preguiçosa: nada de walk
+ * recursivo gigante via SFTP (que travava/estourava timeout em homes grandes).
+ */
+export async function listDir(vault: Vault, rel: string): Promise<FileNode[]> {
+  const dir = rel ? remoteResolve(vault, rel) : remoteRoot(vault)
+  return withClient(vault, async (client) => {
+    const entries = await withTimeout(client.list(dir), OP_TIMEOUT, `listar ${dir}`)
+    const nodes: FileNode[] = []
+    for (const e of entries) {
+      const abs = path.posix.join(dir, e.name)
+      if (e.type === 'd') {
+        if (skipWalkDir(e.name)) continue
+        nodes.push({ name: e.name, path: toRel(vault, abs), isDir: true }) // children lazy
+      } else if (TEXT_EXTS.has(path.extname(e.name).toLowerCase())) {
+        nodes.push({ name: e.name, path: toRel(vault, abs), isDir: false })
+      }
+    }
+    nodes.sort((a, b) => {
+      if (a.isDir !== b.isDir) return a.isDir ? -1 : 1
+      return a.name.localeCompare(b.name)
+    })
+    return nodes
+  })
+}
+
+/** Árvore SFTP completa (recursiva). Usada por índice/busca/LLM — NÃO pela
+ * barra lateral, que carrega preguiçosamente via `listDir`. */
 export async function listTree(vault: Vault): Promise<FileNode[]> {
   return withClient(vault, async (client) => {
     async function walk(dir: string): Promise<FileNode[]> {
@@ -170,12 +203,7 @@ export async function listTree(vault: Vault): Promise<FileNode[]> {
         const abs = path.posix.join(dir, e.name)
         if (e.type === 'd') {
           if (skipWalkDir(e.name)) continue
-          nodes.push({
-            name: e.name,
-            path: toRel(vault, abs),
-            isDir: true,
-            children: await walk(abs)
-          })
+          nodes.push({ name: e.name, path: toRel(vault, abs), isDir: true, children: await walk(abs) })
         } else if (TEXT_EXTS.has(path.extname(e.name).toLowerCase())) {
           nodes.push({ name: e.name, path: toRel(vault, abs), isDir: false })
         }
