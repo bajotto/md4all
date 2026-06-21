@@ -1398,3 +1398,7 @@ button {
   opacity: 0.75;
 }
 .tree-row.file.active .tree-file-icon { color: inherit; opacity: 0.9; }
+
+/* arquivos markdown em azul (acento), fechando a cadeia visual pasta→arquivo */
+.tree-label.is-md { color: var(--accent); }
+.tree-row.file.md .tree-file-icon { color: var(--accent); opacity: 0.85; }

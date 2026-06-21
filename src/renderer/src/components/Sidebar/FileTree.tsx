@@ -108,14 +108,15 @@ function TreeNode({ vaultId, node, depth, openModal }: {
   }
 
   const isActive = active?.vaultId === vaultId && active?.path === node.path
+  const isMd = /\.(md|markdown|mdown|mkd)$/i.test(node.name)
   return (
     <div
-      className={`tree-row file ${isActive ? 'active' : ''}`}
+      className={`tree-row file ${isActive ? 'active' : ''} ${isMd ? 'md' : ''}`}
       style={{ paddingLeft: depth * 12 + 8 }}
       onClick={() => void openFile(vaultId, node.path)}
     >
       <FileIcon />
-      <span className="tree-label">{node.name}</span>
+      <span className={`tree-label ${isMd ? 'is-md' : ''}`}>{node.name}</span>
       <span className="tree-actions" onClick={(e) => e.stopPropagation()}>
         <button title="Renomear" onClick={askRename}>✎</button>
         <button title="Apagar" onClick={() => void askDelete()}>🗑</button>
