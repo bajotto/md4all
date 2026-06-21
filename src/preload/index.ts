@@ -16,6 +16,9 @@ const api = {
   // SFTP / SSH
   addSftp: (input: unknown) => ipcRenderer.invoke('vault:addSftp', input),
   testSftp: (input: unknown) => ipcRenderer.invoke('vault:testSftp', input),
+  browseSftp: (input: unknown, remotePath?: string) =>
+    ipcRenderer.invoke('vault:browseSftp', input, remotePath),
+  browseSftpClose: () => ipcRenderer.invoke('vault:browseClose'),
   pickKey: () => ipcRenderer.invoke('vault:pickKey'),
 
   // arquivos

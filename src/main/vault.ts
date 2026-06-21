@@ -245,6 +245,11 @@ export async function testSftp(input: SftpInput): Promise<void> {
   await sftp.testConnection(buildSftpConfig(input), input.rootPath?.trim() || '.')
 }
 
+/** Lista um nível do FS remoto usando as credenciais do formulário (vault ainda não existe). */
+export async function browseSftp(input: SftpInput, remotePath?: string): Promise<sftp.BrowseResult> {
+  return sftp.browse(buildSftpConfig(input), remotePath)
+}
+
 export async function addSftpVault(input: SftpInput): Promise<Vault> {
   const cfg = buildSftpConfig(input)
   // valida a conexão antes de salvar

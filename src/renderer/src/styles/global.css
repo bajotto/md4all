@@ -1367,3 +1367,22 @@ button {
 :root[data-theme='dark'] .doc-sev.medium, :root[data-theme='dark'] .doc-verify.unverified { background: #3a2f12; color: #e0b34d; }
 :root[data-theme='dark'] .doc-verify.verified { background: #16361f; color: #5ad17e; }
 .doc-tree-row input[type='checkbox'] { margin: 0 2px 0 0; }
+
+/* ===== navegador de diretório remoto (SFTP) ===== */
+.modal-box.rdir { width: min(520px, 92vw); }
+.rdir-bar { display: flex; align-items: center; gap: 8px; }
+.rdir-path {
+  flex: 1; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+  color: var(--text-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  background: var(--bg-elev); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px;
+}
+.rdir-list {
+  height: 320px; overflow-y: auto; border: 1px solid var(--border);
+  border-radius: 6px; background: var(--bg); padding: 4px;
+}
+.rdir-row {
+  display: flex; align-items: center; gap: 8px; padding: 5px 8px;
+  border-radius: 4px; cursor: pointer; font-size: 13px;
+}
+.rdir-row:hover { background: var(--accent-soft); }
+.rdir-icon { flex-shrink: 0; }

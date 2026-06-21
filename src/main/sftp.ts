@@ -6,6 +6,24 @@ import type { FileNode, SftpConfig, Vault } from './types'
 
 const TEXT_EXTS = new Set(['.md', '.markdown', '.mdown', '.mkd', '.txt'])
 const IGNORED = new Set(['.git', 'node_modules', '.obsidian', '.DS_Store'])
+// pastas pesadas que não devem ser varridas na árvore (evita walk lento/travado)
+const HEAVY_DIRS = new Set(['dist', 'build', 'out', '.next', 'coverage', 'vendor', 'target', '.cache'])
+
+function skipWalkDir(name: string): boolean {
+  return IGNORED.has(name) || HEAVY_DIRS.has(name) || name.startsWith('.') || name.startsWith('_backup_')
+}
+
+const OP_TIMEOUT = 20_000 // nenhuma operação SFTP pode pendurar para sempre
+
+/** Garante que uma promise resolva/rejeite dentro de `ms`, senão rejeita com erro claro. */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Tempo esgotado (${ms / 1000}s) em: ${label}`)), ms)
+    )
+  ])
+}
 
 // ---------- segredos (safeStorage com fallback) ----------
 export function encryptSecret(plain: string): string {
@@ -53,7 +71,7 @@ async function connect(vault: Vault): Promise<SftpClient> {
   if (!vault.sftp) throw new Error('Vault SFTP sem configuração')
   const client = new SftpClient(`md4all-${vault.id}`)
   const opts = await buildConnectOptions(vault.sftp)
-  await client.connect(opts)
+  await withTimeout(client.connect(opts), OP_TIMEOUT, `conectar ${vault.sftp.host}`)
   // ao cair a conexão, remove do pool para reconectar na próxima operação
   const drop = (): void => {
     if (pool.get(vault.id) === client) pool.delete(vault.id)
@@ -146,17 +164,12 @@ function toRel(vault: Vault, abs: string): string {
 export async function listTree(vault: Vault): Promise<FileNode[]> {
   return withClient(vault, async (client) => {
     async function walk(dir: string): Promise<FileNode[]> {
-      let entries: SftpClient.FileInfo[]
-      try {
-        entries = await client.list(dir)
-      } catch {
-        return []
-      }
+      const entries = await withTimeout(client.list(dir), OP_TIMEOUT, `listar ${dir}`)
       const nodes: FileNode[] = []
       for (const e of entries) {
-        if (IGNORED.has(e.name) || e.name.startsWith('.')) continue
         const abs = path.posix.join(dir, e.name)
         if (e.type === 'd') {
+          if (skipWalkDir(e.name)) continue
           nodes.push({
             name: e.name,
             path: toRel(vault, abs),
@@ -182,16 +195,11 @@ export async function collectPaths(vault: Vault, exts: Set<string>): Promise<str
   return withClient(vault, async (client) => {
     const out: string[] = []
     async function walk(dir: string): Promise<void> {
-      let entries: SftpClient.FileInfo[]
-      try {
-        entries = await client.list(dir)
-      } catch {
-        return
-      }
+      const entries = await withTimeout(client.list(dir), OP_TIMEOUT, `listar ${dir}`)
       for (const e of entries) {
         const abs = path.posix.join(dir, e.name)
         if (e.type === 'd') {
-          if (IGNORED.has(e.name) || e.name.startsWith('.') || e.name.startsWith('_backup_')) continue
+          if (skipWalkDir(e.name)) continue
           await walk(abs)
         } else if (exts.has(path.extname(e.name).toLowerCase())) {
           out.push(toRel(vault, abs))
@@ -201,6 +209,87 @@ export async function collectPaths(vault: Vault, exts: Set<string>): Promise<str
     await walk(remoteRoot(vault))
     return out
   })
+}
+
+// ---------- navegação transitória (escolher raiz antes de criar o vault) ----------
+interface Transient {
+  client: SftpClient
+  timer: ReturnType<typeof setTimeout> | null
+}
+const transientPool = new Map<string, Transient>()
+
+function transientKey(cfg: SftpConfig): string {
+  return `${cfg.host}:${cfg.port || 22}:${cfg.username}`
+}
+
+function resetIdle(key: string): void {
+  const t = transientPool.get(key)
+  if (!t) return
+  if (t.timer) clearTimeout(t.timer)
+  t.timer = setTimeout(() => void closeTransient(key), 60_000)
+}
+
+async function closeTransient(key: string): Promise<void> {
+  const t = transientPool.get(key)
+  if (!t) return
+  if (t.timer) clearTimeout(t.timer)
+  transientPool.delete(key)
+  try {
+    await t.client.end()
+  } catch {
+    /* ignora */
+  }
+}
+
+async function getTransient(cfg: SftpConfig): Promise<SftpClient> {
+  const key = transientKey(cfg)
+  const existing = transientPool.get(key)
+  if (existing) {
+    resetIdle(key)
+    return existing.client
+  }
+  const client = new SftpClient(`md4all-browse-${key}`)
+  await withTimeout(client.connect(await buildConnectOptions(cfg)), OP_TIMEOUT, `conectar ${cfg.host}`)
+  transientPool.set(key, { client, timer: null })
+  resetIdle(key)
+  const drop = (): void => {
+    if (transientPool.get(key)?.client === client) void closeTransient(key)
+  }
+  client.on('end', drop)
+  client.on('close', drop)
+  client.on('error', drop)
+  return client
+}
+
+export interface BrowseResult {
+  path: string // diretório atual (absoluto)
+  parent: string | null // null na raiz
+  dirs: { name: string; path: string }[]
+  fileCount: number // nº de arquivos no diretório atual (contexto)
+}
+
+/** Lista UM nível do FS remoto (subpastas), reaproveitando uma conexão transitória. */
+export async function browse(cfg: SftpConfig, remotePath?: string): Promise<BrowseResult> {
+  const client = await getTransient(cfg)
+  // resolve para caminho absoluto (realPath também valida existência)
+  const target = await withTimeout(
+    client.realPath((remotePath && remotePath.trim()) || '.'),
+    OP_TIMEOUT,
+    'resolver caminho'
+  )
+  const entries = await withTimeout(client.list(target), OP_TIMEOUT, `listar ${target}`)
+  const dirs = entries
+    .filter((e) => e.type === 'd' && !IGNORED.has(e.name))
+    .map((e) => ({ name: e.name, path: path.posix.join(target, e.name) }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+  const fileCount = entries.filter((e) => e.type !== 'd').length
+  const parent = target === '/' ? null : path.posix.dirname(target)
+  return { path: target, parent, dirs, fileCount }
+}
+
+/** Fecha todas as conexões transitórias (ao fechar o picker/modal). */
+export async function browseClose(): Promise<void> {
+  await Promise.all([...transientPool.keys()].map((k) => closeTransient(k)))
 }
 
 export async function readFile(vault: Vault, rel: string): Promise<string> {

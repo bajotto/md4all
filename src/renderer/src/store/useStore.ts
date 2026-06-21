@@ -185,8 +185,9 @@ export const useStore = create<State>((set, get) => ({
       const vault = (await api.addSftp(input)) as Vault
       const s = (await api.getSettings()) as AppSettings
       get().applySettings(s)
-      set({ expanded: { ...get().expanded, [vault.id]: true } })
-      await get().loadTree(vault.id)
+      // adiciona COLAPSADO e não bloqueia: a árvore remota carrega lazy ao expandir
+      // (evita o "Conectando…" infinito ao varrer um repo grande via SFTP).
+      set({ expanded: { ...get().expanded, [vault.id]: false } })
       return true
     } catch (err) {
       await api.showError(err instanceof Error ? err.message : String(err))

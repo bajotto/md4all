@@ -18,6 +18,7 @@ import type { AnalysisReport } from './types'
 import {
   addSftpVault,
   addVault,
+  browseSftp,
   createFile,
   createFolder,
   listTree,
@@ -30,6 +31,7 @@ import {
   testSftp,
   writeFile
 } from './vault'
+import { browseClose } from './sftp'
 import { unwatchVault } from './watcher'
 import {
   allTags,
@@ -68,6 +70,10 @@ export function registerIpc(): void {
   ipcMain.handle('vault:icloudPath', () => suggestedIcloudPath())
   ipcMain.handle('vault:addSftp', (_e, input: SftpInput) => addSftpVault(input))
   ipcMain.handle('vault:testSftp', (_e, input: SftpInput) => testSftp(input))
+  ipcMain.handle('vault:browseSftp', (_e, input: SftpInput, remotePath?: string) =>
+    browseSftp(input, remotePath)
+  )
+  ipcMain.handle('vault:browseClose', () => browseClose())
   ipcMain.handle('vault:pickKey', async () => {
     const result = await dialog.showOpenDialog({
       properties: ['openFile'],

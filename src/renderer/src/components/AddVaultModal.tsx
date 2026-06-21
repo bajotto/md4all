@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../store/useStore'
+import RemoteDirPicker from './RemoteDirPicker'
 import type { SftpInput } from '../types'
 
 interface Props {
@@ -14,6 +15,7 @@ export default function AddVaultModal({ onClose }: Props): JSX.Element {
   const [mode, setMode] = useState<Mode>('local')
   const [busy, setBusy] = useState(false)
   const [testMsg, setTestMsg] = useState<string | null>(null)
+  const [browsing, setBrowsing] = useState(false)
 
   // local
   const [path, setPath] = useState('')
@@ -82,6 +84,14 @@ export default function AddVaultModal({ onClose }: Props): JSX.Element {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
+      {browsing ? (
+        <RemoteDirPicker
+          input={buildInput()}
+          initialPath={rootPath.trim() && rootPath.trim() !== '.' ? rootPath.trim() : undefined}
+          onPick={(p) => setRootPath(p)}
+          onClose={() => setBrowsing(false)}
+        />
+      ) : null}
       <div className="modal-box add-vault" onClick={(e) => e.stopPropagation()}>
         <p className="modal-title">Adicionar vault</p>
 
@@ -140,7 +150,12 @@ export default function AddVaultModal({ onClose }: Props): JSX.Element {
               </>
             )}
 
-            <input className="modal-input" placeholder="Pasta raiz remota (ex.: /home/user/notas ou .)" value={rootPath} onChange={(e) => setRootPath(e.target.value)} />
+            <div className="field-row">
+              <input className="modal-input flex2" placeholder="Pasta raiz remota (ex.: /home/user/notas ou .)" value={rootPath} onChange={(e) => setRootPath(e.target.value)} />
+              <button className="inline-btn" disabled={!sftpValid || busy} onClick={() => setBrowsing(true)} title="Navegar no servidor">
+                📁 Procurar…
+              </button>
+            </div>
 
             <div className="add-vault-shortcuts">
               <button disabled={!sftpValid || busy} onClick={() => void testSftp()}>
