@@ -1,0 +1,10 @@
+#!/bin/sh
+# Hook de pre-commit: roda a verificação determinística de docs (sem LLM, sem custo).
+# Instale com: npm run hooks:install
+# Para pular pontualmente: git commit --no-verify
+npm run doccheck || {
+  echo ''
+  echo 'doccheck encontrou referências quebradas na documentação.'
+  echo 'Corrija, ou use "git commit --no-verify" para pular.'
+  exit 1
+}
