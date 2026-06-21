@@ -91,6 +91,51 @@ export interface AnalyzeResult {
   stats: { docCount: number; codeCount: number }
 }
 
+// ---------- auditoria grounded (findings com âncoras verificáveis) ----------
+/** Referência a um trecho real de código. `quote` é literal, p/ verificação textual. */
+export interface Anchor {
+  path: string
+  quote: string // trecho literal copiado do código (usado na verificação)
+  symbol?: string
+  line?: number
+}
+
+export type FindingKind =
+  | 'doc_code_mismatch'
+  | 'contradiction'
+  | 'duplication'
+  | 'undocumented'
+  | 'stale'
+
+export type Severity = 'high' | 'medium' | 'low'
+export type VerifyState = 'verified' | 'unverified' | 'refuted'
+
+export interface Finding {
+  id: string
+  kind: FindingKind
+  severity: Severity
+  doc: string | null // arquivo .md afetado (ou null)
+  claim: string // a afirmação/problema
+  anchors: Anchor[] // referências ao código
+  suggestedFix: string
+  verify: VerifyState // preenchido pela verificação (1B/1C)
+  refutation?: string // justificativa do revisor, quando refuted
+}
+
+export interface AuditReport {
+  findings: Finding[]
+  usage: LlmUsage
+  stats: { docCount: number; codeCount: number; verified: number; unverified: number; refuted: number }
+}
+
+/** Contexto do agente gerado (AGENTS.md): fatos determinísticos + camada curada. */
+export interface AgentsContext {
+  content: string // markdown final do AGENTS.md
+  targetPath: string // caminho relativo onde gravar (ex.: AGENTS.md)
+  usage: LlmUsage
+  factCount: number // nº de fatos determinísticos incluídos
+}
+
 export interface ReviewOutcome {
   review: ReviewResult
   usage: LlmUsage

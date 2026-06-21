@@ -6,7 +6,14 @@ import { search } from './search'
 import { watchVault } from './watcher'
 import { decryptSecret, encryptSecret } from './sftp'
 import { validateLlmConfig } from './llm'
-import { analyze, applyProposal, reviewProposal } from './docAnalysis'
+import {
+  analyze,
+  applyAgents,
+  applyProposal,
+  audit,
+  generateAgentsContext,
+  reviewProposal
+} from './docAnalysis'
 import type { AnalysisReport } from './types'
 import {
   addSftpVault,
@@ -176,6 +183,9 @@ export function registerIpc(): void {
   )
 
   // ---- análise de documentação por LLM ----
+  ipcMain.handle('doc:audit', (e, vaultId: string) =>
+    audit(vaultId, (msg, pct) => e.sender.send('doc:progress', { msg, pct }))
+  )
   ipcMain.handle('doc:analyze', (e, vaultId: string) =>
     analyze(vaultId, (msg, pct) => e.sender.send('doc:progress', { msg, pct }))
   )
@@ -184,5 +194,13 @@ export function registerIpc(): void {
   )
   ipcMain.handle('doc:apply', (e, vaultId: string, report: AnalysisReport) =>
     applyProposal(vaultId, report, (msg, pct) => e.sender.send('doc:progress', { msg, pct }))
+  )
+  ipcMain.handle('doc:agents', (e, vaultId: string, targetPath: string) =>
+    generateAgentsContext(vaultId, targetPath || 'AGENTS.md', (msg, pct) =>
+      e.sender.send('doc:progress', { msg, pct })
+    )
+  )
+  ipcMain.handle('doc:agentsApply', (_e, vaultId: string, targetPath: string, content: string) =>
+    applyAgents(vaultId, targetPath || 'AGENTS.md', content)
   )
 }

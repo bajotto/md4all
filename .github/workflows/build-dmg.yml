@@ -24,6 +24,12 @@ jobs:
       - name: Instalar dependências
         run: npm ci
 
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Testes (vitest)
+        run: npm test
+
       # Para distribuição fora da Mac App Store sem assinatura,
       # o usuário precisará desativar o Gatekeeper ou assinar com um
       # Apple Developer ID. As variáveis abaixo ficam em branco em forks

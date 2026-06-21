@@ -63,10 +63,15 @@ const api = {
   llmGetConfig: () => ipcRenderer.invoke('llm:getConfig'),
   llmValidate: (input: unknown) => ipcRenderer.invoke('llm:validate', input),
   llmSaveConfig: (input: unknown) => ipcRenderer.invoke('llm:saveConfig', input),
+  docAudit: (vaultId: string) => ipcRenderer.invoke('doc:audit', vaultId),
   docAnalyze: (vaultId: string) => ipcRenderer.invoke('doc:analyze', vaultId),
   docReview: (vaultId: string, report: unknown) =>
     ipcRenderer.invoke('doc:review', vaultId, report),
   docApply: (vaultId: string, report: unknown) => ipcRenderer.invoke('doc:apply', vaultId, report),
+  docAgents: (vaultId: string, targetPath: string) =>
+    ipcRenderer.invoke('doc:agents', vaultId, targetPath),
+  docAgentsApply: (vaultId: string, targetPath: string, content: string) =>
+    ipcRenderer.invoke('doc:agentsApply', vaultId, targetPath, content),
   onDocProgress: (cb: (payload: { msg: string; pct?: number }) => void) => {
     const listener = (_e: unknown, payload: { msg: string; pct?: number }): void => cb(payload)
     ipcRenderer.on('doc:progress', listener)

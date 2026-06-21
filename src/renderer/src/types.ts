@@ -129,3 +129,36 @@ export interface ReviewOutcome {
   review: ReviewResult
   usage: LlmUsage
 }
+
+// auditoria grounded
+export interface Anchor {
+  path: string
+  quote: string
+  symbol?: string
+  line?: number
+}
+export type FindingKind = 'doc_code_mismatch' | 'contradiction' | 'duplication' | 'undocumented' | 'stale'
+export type Severity = 'high' | 'medium' | 'low'
+export type VerifyState = 'verified' | 'unverified' | 'refuted'
+export interface Finding {
+  id: string
+  kind: FindingKind
+  severity: Severity
+  doc: string | null
+  claim: string
+  anchors: Anchor[]
+  suggestedFix: string
+  verify: VerifyState
+  refutation?: string
+}
+export interface AuditReport {
+  findings: Finding[]
+  usage: LlmUsage
+  stats: { docCount: number; codeCount: number; verified: number; unverified: number; refuted: number }
+}
+export interface AgentsContext {
+  content: string
+  targetPath: string
+  usage: LlmUsage
+  factCount: number
+}
