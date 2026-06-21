@@ -3,7 +3,7 @@
   "version": "0.10.5",
   "description": "Editor Markdown WYSIWYG completo (local / iCloud / SMB)",
   "main": "./out/main/index.js",
-  "author": "md4all",
+  "author": "md4all <noreply@md4all.app>",
   "license": "MIT",
   "scripts": {
     "dev": "electron-vite dev",

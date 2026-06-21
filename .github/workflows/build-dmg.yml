@@ -1,16 +1,27 @@
-name: Build DMG (macOS)
+name: Build & Release (mac/win/linux)
 
 on:
   push:
     tags:
-      - 'v*'          # dispara ao criar uma tag como v0.1.0
-  workflow_dispatch:  # permite rodar manualmente pelo GitHub Actions UI
+      - 'v*' # dispara ao criar uma tag como v0.1.0
+  workflow_dispatch: # permite rodar manualmente pelo GitHub Actions UI
 
 jobs:
-  build-mac:
-    runs-on: macos-latest
-    permissions:
-      contents: write
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            builder: npx electron-builder --mac dmg --x64 --publish never && npx electron-builder --mac dmg --arm64 --publish never
+          - os: ubuntu-latest
+            builder: npx electron-builder --linux --publish never
+          - os: windows-latest
+            builder: npx electron-builder --win --publish never
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,46 +41,51 @@ jobs:
       - name: Testes (vitest)
         run: npm test
 
-      # Para distribuição fora da Mac App Store sem assinatura,
-      # o usuário precisará desativar o Gatekeeper ou assinar com um
-      # Apple Developer ID. As variáveis abaixo ficam em branco em forks
-      # e a build prossegue sem assinatura (modo de desenvolvimento).
-      - name: Build + DMG (x64 + arm64)
+      - name: Build do app
+        run: npm run build
+
+      # Sem assinatura: macOS usa ad-hoc (afterPack), Windows gera nsis não
+      # assinado (aviso do SmartScreen), Linux AppImage/deb.
+      - name: Build dos instaladores
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Configure em Settings → Secrets para assinar:
-          # APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID
-          # CSC_LINK (certificado .p12 em base64), CSC_KEY_PASSWORD
           CSC_IDENTITY_AUTO_DISCOVERY: false
-        run: |
-          npm run build
-          npx electron-builder --mac dmg --x64 --publish never
-          npx electron-builder --mac dmg --arm64 --publish never
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ${{ matrix.builder }}
+
+      - name: Listar dist
+        run: ls -lh dist/ || true
+
+      - name: Upload dos instaladores
+        uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.os }}
+          path: |
+            dist/*.dmg
+            dist/*.exe
+            dist/*.AppImage
+            dist/*.deb
+          if-no-files-found: warn
+
+  # Junta os artefatos das 3 plataformas e cria UM release (evita corrida).
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Baixar artefatos
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
 
       - name: Listar artefatos
-        run: ls -lh dist/
+        run: ls -lh artifacts/
 
-      - name: Upload DMG (x64)
-        uses: actions/upload-artifact@v4
-        with:
-          name: md4all-dmg-x64
-          path: dist/*-x64.dmg
-          if-no-files-found: warn
-
-      - name: Upload DMG (arm64 / Apple Silicon)
-        uses: actions/upload-artifact@v4
-        with:
-          name: md4all-dmg-arm64
-          path: dist/*-arm64.dmg
-          if-no-files-found: warn
-
-      # Cria um GitHub Release automático ao tagear
-      - name: Release
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Publicar release
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            dist/*.dmg
-            dist/*.zip
+          files: artifacts/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
