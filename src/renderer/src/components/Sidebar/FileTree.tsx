@@ -13,6 +13,23 @@ function join(dir: string, name: string): string {
   return dir ? `${dir}/${name}` : name
 }
 
+/** Ícone discreto de documento (estilo Lettera) antes do nome do arquivo. */
+function FileIcon(): JSX.Element {
+  return (
+    <svg className="tree-file-icon" width="13" height="13" viewBox="0 0 16 16" aria-hidden="true">
+      <path
+        d="M4 1.75h4.5L13 6.25v7A1.25 1.25 0 0 1 11.75 14.5h-7.5A1.25 1.25 0 0 1 3 13.25V3A1.25 1.25 0 0 1 4 1.75z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinejoin="round"
+      />
+      <path d="M8.5 1.9v3.6h3.6" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M5.4 8.4h5.2M5.4 10.6h5.2" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" opacity="0.7" />
+    </svg>
+  )
+}
+
 function TreeNode({ vaultId, node, depth, openModal }: {
   vaultId: string
   node: FileNode
@@ -94,9 +111,10 @@ function TreeNode({ vaultId, node, depth, openModal }: {
   return (
     <div
       className={`tree-row file ${isActive ? 'active' : ''}`}
-      style={{ paddingLeft: depth * 12 + 22 }}
+      style={{ paddingLeft: depth * 12 + 8 }}
       onClick={() => void openFile(vaultId, node.path)}
     >
+      <FileIcon />
       <span className="tree-label">{node.name}</span>
       <span className="tree-actions" onClick={(e) => e.stopPropagation()}>
         <button title="Renomear" onClick={askRename}>✎</button>

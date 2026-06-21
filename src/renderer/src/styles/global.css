@@ -1389,3 +1389,12 @@ button {
 
 /* pastas que contêm markdown em algum descendente: destaque por cor */
 .tree-label.has-md { color: var(--accent); font-weight: 600; }
+
+/* ícone discreto de documento nos arquivos da árvore */
+.tree-file-icon {
+  flex-shrink: 0;
+  margin-right: 6px;
+  color: var(--text-soft);
+  opacity: 0.75;
+}
+.tree-row.file.active .tree-file-icon { color: inherit; opacity: 0.9; }
