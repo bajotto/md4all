@@ -6,6 +6,7 @@ export default function Tabs(): JSX.Element | null {
   const active = useStore((s) => s.active)
   const setActiveTab = useStore((s) => s.setActiveTab)
   const closeTab = useStore((s) => s.closeTab)
+  const closeAllTabs = useStore((s) => s.closeAllTabs)
 
   if (tabs.length === 0) return null
 
@@ -37,6 +38,14 @@ export default function Tabs(): JSX.Element | null {
           </div>
         )
       })}
+      <button
+        className="tabs-close-all"
+        title="Fechar todas as abas"
+        aria-label="Fechar todas as abas"
+        onClick={() => closeAllTabs()}
+      >
+        Fechar todas
+      </button>
     </div>
   )
 }

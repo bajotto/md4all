@@ -78,6 +78,7 @@ interface State {
   // arquivos
   openFile: (vaultId: string, relPath: string) => Promise<void>
   closeTab: (vaultId: string, relPath: string) => void
+  closeAllTabs: () => void
   setActiveTab: (vaultId: string, relPath: string) => void
   updateContent: (vaultId: string, relPath: string, content: string) => void
   saveTab: (vaultId: string, relPath: string) => Promise<void>
@@ -303,6 +304,11 @@ export const useStore = create<State>((set, get) => ({
       nextActive = cand ? { vaultId: cand.vaultId, path: cand.path } : null
     }
     set({ tabs: next, active: nextActive })
+  },
+
+  closeAllTabs: () => {
+    if (get().tabs.length === 0) return
+    set({ tabs: [], active: null })
   },
 
   setActiveTab: (vaultId, relPath) => {

@@ -13,6 +13,20 @@ function join(dir: string, name: string): string {
   return dir ? `${dir}/${name}` : name
 }
 
+const MD_RE = /\.(md|markdown|mdown|mkd)$/i
+
+/**
+ * Uma pasta deve ficar azul se houver markdown em qualquer descendente. Combina
+ * a sondagem assíncrona (`hasMd`, usada p/ subárvores ainda não carregadas no
+ * vault SFTP) com uma checagem síncrona dos filhos já carregados — assim a
+ * cadeia pasta→arquivo acende na hora, sem depender do término da sondagem.
+ */
+function subtreeHasMd(node: FileNode): boolean {
+  if (node.hasMd) return true
+  if (!node.children) return false
+  return node.children.some((c) => (c.isDir ? subtreeHasMd(c) : MD_RE.test(c.name)))
+}
+
 /** Ícone discreto de documento (estilo Lettera) antes do nome do arquivo. */
 function FileIcon(): JSX.Element {
   return (
@@ -78,11 +92,12 @@ function TreeNode({ vaultId, node, depth, openModal }: {
   })
 
   if (node.isDir) {
+    const hasMd = subtreeHasMd(node)
     return (
       <div className="tree-folder">
         <div className="tree-row" style={{ paddingLeft: depth * 12 + 8 }} onClick={toggleOpen}>
           <span className="tree-caret">{open ? '▾' : '▸'}</span>
-          <span className={`tree-label ${node.hasMd ? 'has-md' : ''}`} title={node.hasMd ? 'Contém markdown' : undefined}>
+          <span className={`tree-label ${hasMd ? 'has-md' : ''}`} title={hasMd ? 'Contém markdown' : undefined}>
             {node.name}
           </span>
           <span className="tree-actions" onClick={(e) => e.stopPropagation()}>
@@ -108,7 +123,7 @@ function TreeNode({ vaultId, node, depth, openModal }: {
   }
 
   const isActive = active?.vaultId === vaultId && active?.path === node.path
-  const isMd = /\.(md|markdown|mdown|mkd)$/i.test(node.name)
+  const isMd = MD_RE.test(node.name)
   return (
     <div
       className={`tree-row file ${isActive ? 'active' : ''} ${isMd ? 'md' : ''}`}

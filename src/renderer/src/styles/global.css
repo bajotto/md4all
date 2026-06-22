@@ -296,6 +296,24 @@ button {
 .tab-close:hover {
   color: var(--danger);
 }
+.tabs-close-all {
+  margin-left: auto;
+  align-self: stretch;
+  flex: none;
+  position: sticky;
+  right: 0;
+  background: var(--bg-elev);
+  border: none;
+  border-left: 1px solid var(--border);
+  color: var(--text-soft);
+  font-size: 12px;
+  white-space: nowrap;
+  padding: 0 12px;
+  cursor: pointer;
+}
+.tabs-close-all:hover {
+  color: var(--text);
+}
 
 /* ---------- editor ---------- */
 .editor {
