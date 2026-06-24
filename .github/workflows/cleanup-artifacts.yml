@@ -10,8 +10,29 @@ jobs:
   cleanup:
     runs-on: ubuntu-latest
     steps:
-      - name: Delete all artifacts
-        uses: geekyeggo/delete-artifact@v2
-        with:
-          name: |
-            installers-*
+      - name: Delete artifacts via API
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REPO_OWNER="bajotto"
+          REPO_NAME="md4all"
+
+          # Lista todos os artifacts
+          ARTIFACTS=$(curl -s \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/artifacts")
+
+          # Extrai IDs e deleta cada um
+          echo "$ARTIFACTS" | jq -r '.artifacts[] | .id' | while read ARTIFACT_ID; do
+            if [ -n "$ARTIFACT_ID" ] && [ "$ARTIFACT_ID" != "null" ]; then
+              echo "Deletando artifact $ARTIFACT_ID..."
+              curl -X DELETE \
+                -H "Authorization: token $GITHUB_TOKEN" \
+                -H "Accept: application/vnd.github.v3+json" \
+                "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/actions/artifacts/$ARTIFACT_ID"
+              echo ""
+            fi
+          done
+
+          echo "✓ Cleanup completo!"
