@@ -1,5 +1,5 @@
 <svg viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <rect width="512" height="512" rx="114" fill="#3b7dd8"/>
-  <!-- M como polígono preenchido (branco) — mais confiável que stroke em conversão PNG -->
-  <path d="M80,400 L80,112 L256,272 L432,112 L432,400 L392,400 L392,152 L256,312 L120,152 L120,400 Z" fill="white"/>
+  <path d="M157,137 L237,237 L252,256 L237,275 L157,375 L111,337 L191,237 L176,256 L191,275 L111,175 Z" fill="white"/>
+  <path d="M307,137 L387,237 L402,256 L387,275 L307,375 L261,337 L341,237 L326,256 L341,275 L261,175 Z" fill="white"/>
 </svg>
