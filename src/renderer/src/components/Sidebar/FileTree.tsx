@@ -44,11 +44,12 @@ function FileIcon(): JSX.Element {
   )
 }
 
-function TreeNode({ vaultId, node, depth, openModal }: {
+function TreeNode({ vaultId, node, depth, openModal, vaultPath }: {
   vaultId: string
   node: FileNode
   depth: number
   openModal: (s: NonNullable<ModalState>) => void
+  vaultPath: string
 }): JSX.Element {
   const active = useStore((s) => s.active)
   const openFile = useStore((s) => s.openFile)
@@ -96,11 +97,17 @@ function TreeNode({ vaultId, node, depth, openModal }: {
   const doCopy = (): void => copyPath(vaultId, node.path)
   const doPaste = async (): Promise<void> => void await pastePath(vaultId, node.isDir ? node.path : parentDir(node.path))
 
+  const copyFullPath = (e: React.MouseEvent): void => {
+    e.preventDefault()
+    const fullPath = vaultPath ? `${vaultPath}/${node.path}` : node.path
+    void navigator.clipboard.writeText(fullPath)
+  }
+
   if (node.isDir) {
     const hasMd = subtreeHasMd(node)
     return (
       <div className="tree-folder">
-        <div className="tree-row" style={{ paddingLeft: depth * 12 + 8 }} onClick={toggleOpen}>
+        <div className="tree-row" style={{ paddingLeft: depth * 12 + 8 }} onClick={toggleOpen} onContextMenu={copyFullPath}>
           <span className="tree-caret">{open ? '▾' : '▸'}</span>
           <span className={`tree-label ${hasMd ? 'has-md' : ''}`} title={hasMd ? 'Contém markdown' : undefined}>
             {node.name}
@@ -121,7 +128,7 @@ function TreeNode({ vaultId, node, depth, openModal }: {
             ) : null
           ) : (
             node.children.map((c) => (
-              <TreeNode key={c.path} vaultId={vaultId} node={c} depth={depth + 1} openModal={openModal} />
+              <TreeNode key={c.path} vaultId={vaultId} node={c} depth={depth + 1} openModal={openModal} vaultPath={vaultPath} />
             ))
           )
         ) : null}
@@ -136,6 +143,7 @@ function TreeNode({ vaultId, node, depth, openModal }: {
       className={`tree-row file ${isActive ? 'active' : ''} ${isMd ? 'md' : ''}`}
       style={{ paddingLeft: depth * 12 + 8 }}
       onClick={() => void openFile(vaultId, node.path)}
+      onContextMenu={copyFullPath}
     >
       <FileIcon />
       <span className={`tree-label ${isMd ? 'is-md' : ''}`}>{node.name}</span>
@@ -221,7 +229,7 @@ export default function VaultRoot({ vault }: { vault: Vault }): JSX.Element {
             <p className="tree-empty">Vazio.</p>
           ) : (
             tree.map((n) => (
-              <TreeNode key={n.path} vaultId={vault.id} node={n} depth={0} openModal={openModal} />
+              <TreeNode key={n.path} vaultId={vault.id} node={n} depth={0} openModal={openModal} vaultPath={vault.path} />
             ))
           )}
         </div>
