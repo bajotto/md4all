@@ -39,9 +39,15 @@ interface ActiveRef {
   path: string
 }
 
+interface Clipboard {
+  vaultId: string
+  path: string
+}
+
 interface State {
   vaults: Vault[]
   theme: 'light' | 'dark'
+  clipboard: Clipboard | null
 
   // multi-raiz: árvore e estado de expansão por vault
   trees: Record<string, FileNode[]>
@@ -86,6 +92,8 @@ interface State {
   createFolder: (vaultId: string, relPath: string) => Promise<void>
   renamePath: (vaultId: string, from: string, to: string) => Promise<void>
   deletePath: (vaultId: string, relPath: string) => Promise<void>
+  copyPath: (vaultId: string, relPath: string) => void
+  pastePath: (vaultId: string, toDir: string) => Promise<void>
   reloadTabFromDisk: (vaultId: string, relPath: string) => Promise<void>
 
   setEditorMode: (mode: EditorMode) => void
@@ -115,6 +123,7 @@ function basename(p: string): string {
 export const useStore = create<State>((set, get) => ({
   vaults: [],
   theme: 'light',
+  clipboard: null,
   trees: {},
   expanded: {},
   loadingTree: {},
@@ -343,6 +352,13 @@ export const useStore = create<State>((set, get) => ({
     const finalPath = relPath.endsWith('.md') ? relPath : `${relPath}.md`
     try {
       await api.createFile(vaultId, finalPath)
+      // marca pais como tendo .md (evita lag visual)
+      set({
+        trees: {
+          ...get().trees,
+          [vaultId]: setHasMdAt(get().trees[vaultId] ?? [], finalPath, true)
+        }
+      })
       await get().refreshTree(vaultId)
       await get().openFile(vaultId, finalPath)
     } catch (err) {
@@ -362,6 +378,9 @@ export const useStore = create<State>((set, get) => ({
   renamePath: async (vaultId, from, to) => {
     try {
       await api.rename(vaultId, from, to)
+      // marca novo caminho com hasMd se for .md (evita lag visual)
+      const isMd = /\.(md|markdown|mdown|mkd)$/i.test(to)
+      const trees = get().trees[vaultId] ?? []
       set({
         tabs: get().tabs.map((t) =>
           t.vaultId === vaultId && t.path === from ? { ...t, path: to, name: basename(to) } : t
@@ -369,7 +388,8 @@ export const useStore = create<State>((set, get) => ({
         active:
           get().active?.vaultId === vaultId && get().active?.path === from
             ? { vaultId, path: to }
-            : get().active
+            : get().active,
+        trees: isMd ? { ...get().trees, [vaultId]: setHasMdAt(trees, to, true) } : get().trees
       })
       await get().refreshTree(vaultId)
     } catch (err) {
@@ -385,6 +405,42 @@ export const useStore = create<State>((set, get) => ({
       )
       for (const t of affected) get().closeTab(t.vaultId, t.path)
       await get().refreshTree(vaultId)
+    } catch (err) {
+      await api.showError(err instanceof Error ? err.message : String(err))
+    }
+  },
+
+  copyPath: (vaultId, relPath) => {
+    set({ clipboard: { vaultId, path: relPath } })
+  },
+
+  pastePath: async (vaultId, toDir) => {
+    const clipboard = get().clipboard
+    if (!clipboard) {
+      await api.showError('Nada copiado')
+      return
+    }
+    try {
+      const basename = clipboard.path.split('/').pop() || 'cópia'
+      const targetPath = toDir ? `${toDir}/${basename}` : basename
+      // evita copiar para si mesmo
+      if (clipboard.vaultId === vaultId && clipboard.path === targetPath) {
+        await api.showError('Não é possível colar no mesmo local')
+        return
+      }
+      const content = (await api.read(clipboard.vaultId, clipboard.path)) as string
+      await api.createFile(vaultId, targetPath)
+      await api.write(vaultId, targetPath, content)
+      await get().refreshTree(vaultId)
+      // marca pais como tendo .md se for markdown
+      if (/\.(md|markdown|mdown|mkd)$/i.test(targetPath)) {
+        set({
+          trees: {
+            ...get().trees,
+            [vaultId]: setHasMdAt(get().trees[vaultId] ?? [], targetPath, true)
+          }
+        })
+      }
     } catch (err) {
       await api.showError(err instanceof Error ? err.message : String(err))
     }

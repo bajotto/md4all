@@ -57,6 +57,9 @@ function TreeNode({ vaultId, node, depth, openModal }: {
   const createFile = useStore((s) => s.createFile)
   const createFolder = useStore((s) => s.createFolder)
   const loadDir = useStore((s) => s.loadDir)
+  const copyPath = useStore((s) => s.copyPath)
+  const pastePath = useStore((s) => s.pastePath)
+  const clipboard = useStore((s) => s.clipboard)
   const loadingChildren = useStore((s) => s.loadingDir[`${vaultId}::${node.path}`] ?? false)
 
   const [open, setOpen] = useState(false)
@@ -90,6 +93,8 @@ function TreeNode({ vaultId, node, depth, openModal }: {
     defaultValue: '',
     onConfirm: (name) => void createFolder(vaultId, join(node.path, name))
   })
+  const doCopy = (): void => copyPath(vaultId, node.path)
+  const doPaste = async (): Promise<void> => void await pastePath(vaultId, node.isDir ? node.path : parentDir(node.path))
 
   if (node.isDir) {
     const hasMd = subtreeHasMd(node)
@@ -103,6 +108,8 @@ function TreeNode({ vaultId, node, depth, openModal }: {
           <span className="tree-actions" onClick={(e) => e.stopPropagation()}>
             <button title="Novo arquivo" onClick={askNewFile}>+</button>
             <button title="Nova pasta" onClick={askNewFolder}>⊞</button>
+            <button title="Copiar" onClick={doCopy}>📋</button>
+            {clipboard ? <button title="Colar" onClick={doPaste}>📌</button> : null}
             <button title="Renomear" onClick={askRename}>✎</button>
             <button title="Apagar" onClick={() => void askDelete()}>🗑</button>
           </span>
@@ -133,6 +140,8 @@ function TreeNode({ vaultId, node, depth, openModal }: {
       <FileIcon />
       <span className={`tree-label ${isMd ? 'is-md' : ''}`}>{node.name}</span>
       <span className="tree-actions" onClick={(e) => e.stopPropagation()}>
+        <button title="Copiar" onClick={doCopy}>📋</button>
+        {clipboard ? <button title="Colar aqui" onClick={doPaste}>📌</button> : null}
         <button title="Renomear" onClick={askRename}>✎</button>
         <button title="Apagar" onClick={() => void askDelete()}>🗑</button>
       </span>
@@ -148,6 +157,8 @@ export default function VaultRoot({ vault }: { vault: Vault }): JSX.Element {
   const toggle = useStore((s) => s.toggleVaultExpanded)
   const createFile = useStore((s) => s.createFile)
   const createFolder = useStore((s) => s.createFolder)
+  const pastePath = useStore((s) => s.pastePath)
+  const clipboard = useStore((s) => s.clipboard)
   const removeVault = useStore((s) => s.removeVault)
 
   const [modal, setModal] = useState<ModalState>(null)
@@ -171,6 +182,9 @@ export default function VaultRoot({ vault }: { vault: Vault }): JSX.Element {
     )
     if (ok) void removeVault(vault.id)
   }
+  const doPaste = async (): Promise<void> => {
+    await pastePath(vault.id, '')
+  }
 
   return (
     <div className="vault-root">
@@ -190,6 +204,7 @@ export default function VaultRoot({ vault }: { vault: Vault }): JSX.Element {
         <span className="tree-actions" onClick={(e) => e.stopPropagation()}>
           <button title="Novo arquivo" onClick={askNewFile}>+</button>
           <button title="Nova pasta" onClick={askNewFolder}>⊞</button>
+          {clipboard ? <button title="Colar" onClick={doPaste}>📌</button> : null}
           <button title="Remover vault" onClick={() => void askRemove()}>✕</button>
         </span>
       </div>

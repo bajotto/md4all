@@ -19,7 +19,12 @@ export default function InputModal({ title, placeholder, defaultValue = '', onCo
 
   const confirm = (): void => {
     const v = value.trim()
-    if (v) onConfirm(v)
+    if (!v) return
+    if (v.includes('/')) {
+      alert('Nome não pode conter "/"')
+      return
+    }
+    onConfirm(v)
   }
 
   return (

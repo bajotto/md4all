@@ -243,9 +243,12 @@ export async function createFolder(vaultId: string, relPath: string): Promise<st
 
 export async function rename(vaultId: string, fromRel: string, toRelPath: string): Promise<string> {
   const vault = getVault(vaultId)
+  if (!toRelPath.trim()) throw new Error('Nome não pode ser vazio')
+  if (toRelPath.includes('\0')) throw new Error('Nome contém caractere inválido (nulo)')
   if (isSftp(vault)) return sftp.rename(vault, fromRel, toRelPath)
   const from = resolveInVault(vaultId, fromRel)
   const to = resolveInVault(vaultId, toRelPath)
+  if (from === to) throw new Error('Nome igual ao atual')
   await fs.mkdir(path.dirname(to), { recursive: true })
   await fs.rename(from, to)
   return toRelPath
