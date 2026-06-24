@@ -1,0 +1,17 @@
+name: Cleanup Old Artifacts
+
+on:
+  schedule:
+    # Roda diariamente às 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch: # permite rodar manualmente
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete all artifacts
+        uses: geekyeggo/delete-artifact@v2
+        with:
+          name: |
+            installers-*
