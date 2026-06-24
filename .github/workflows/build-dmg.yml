@@ -19,6 +19,8 @@ jobs:
           - os: windows-latest
             builder: npx electron-builder --win --publish never
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
     defaults:
       run:
         shell: bash
