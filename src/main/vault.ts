@@ -201,6 +201,19 @@ export async function readFile(vaultId: string, relPath: string): Promise<string
   return fs.readFile(resolveInVault(vaultId, relPath), 'utf-8')
 }
 
+/** Lê arquivo + timestamp (para detectar mudança externa). */
+export async function readFileMeta(vaultId: string, relPath: string): Promise<{ content: string; modifiedAt: number }> {
+  const vault = getVault(vaultId)
+  const content = await readFile(vaultId, relPath)
+  if (isSftp(vault)) {
+    // SFTP: usa timestamp do servidor (aproximado)
+    return { content, modifiedAt: Date.now() }
+  }
+  // Local: usa mtime real do arquivo
+  const stat = await fs.stat(resolveInVault(vaultId, relPath))
+  return { content, modifiedAt: stat.mtime.getTime() }
+}
+
 /** Caminhos relativos de todos os arquivos com extensão em `exts` (local ou SFTP). */
 export async function collectPaths(vaultId: string, exts: Set<string>): Promise<string[]> {
   const vault = getVault(vaultId)

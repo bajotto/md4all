@@ -52,6 +52,8 @@ export interface OpenTab {
   name: string
   content: string
   dirty: boolean
+  modifiedAt?: number // timestamp unix quando foi lido (para detectar mudança externa)
+  stale?: boolean // true se arquivo mudou no disco desde que foi lido
 }
 
 /** Dados do formulário de vault SFTP enviados ao main. */

@@ -94,6 +94,7 @@ interface State {
   deletePath: (vaultId: string, relPath: string) => Promise<void>
   copyPath: (vaultId: string, relPath: string) => void
   pastePath: (vaultId: string, toDir: string) => Promise<void>
+  checkFileStale: (vaultId: string, relPath: string) => Promise<void>
   reloadTabFromDisk: (vaultId: string, relPath: string) => Promise<void>
 
   setEditorMode: (mode: EditorMode) => void
@@ -293,8 +294,19 @@ export const useStore = create<State>((set, get) => ({
       return
     }
     try {
-      const content = (await api.read(vaultId, relPath)) as string
-      const tab: OpenTab = { vaultId, path: relPath, name: basename(relPath), content, dirty: false }
+      const { content, modifiedAt } = (await api.readMeta(vaultId, relPath)) as {
+        content: string
+        modifiedAt: number
+      }
+      const tab: OpenTab = {
+        vaultId,
+        path: relPath,
+        name: basename(relPath),
+        content,
+        dirty: false,
+        modifiedAt,
+        stale: false
+      }
       set({ tabs: [...get().tabs, tab], active: { vaultId, path: relPath } })
       void get().loadBacklinks()
     } catch (err) {
@@ -323,6 +335,7 @@ export const useStore = create<State>((set, get) => ({
   setActiveTab: (vaultId, relPath) => {
     set({ active: { vaultId, path: relPath } })
     void get().loadBacklinks()
+    void get().checkFileStale(vaultId, relPath)
   },
 
   updateContent: (vaultId, relPath, content) => {
@@ -446,14 +459,38 @@ export const useStore = create<State>((set, get) => ({
     }
   },
 
+  checkFileStale: async (vaultId, relPath) => {
+    const tab = get().tabs.find((t) => t.vaultId === vaultId && t.path === relPath)
+    if (!tab || !tab.modifiedAt) return
+    try {
+      const { modifiedAt: currentMt } = (await api.readMeta(vaultId, relPath)) as {
+        content: string
+        modifiedAt: number
+      }
+      const stale = currentMt > tab.modifiedAt
+      set({
+        tabs: get().tabs.map((t) =>
+          t.vaultId === vaultId && t.path === relPath ? { ...t, stale } : t
+        )
+      })
+    } catch {
+      /* arquivo pode ter sumido */
+    }
+  },
+
   reloadTabFromDisk: async (vaultId, relPath) => {
     const tab = get().tabs.find((t) => t.vaultId === vaultId && t.path === relPath)
     if (!tab || tab.dirty) return
     try {
-      const content = (await api.read(vaultId, relPath)) as string
+      const { content, modifiedAt } = (await api.readMeta(vaultId, relPath)) as {
+        content: string
+        modifiedAt: number
+      }
       set({
         tabs: get().tabs.map((t) =>
-          t.vaultId === vaultId && t.path === relPath ? { ...t, content, dirty: false } : t
+          t.vaultId === vaultId && t.path === relPath
+            ? { ...t, content, dirty: false, modifiedAt, stale: false }
+            : t
         )
       })
     } catch {

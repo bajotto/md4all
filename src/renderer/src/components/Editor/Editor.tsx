@@ -19,6 +19,7 @@ export default function Editor(): JSX.Element | null {
   const editorMode = useStore((s) => s.editorMode)
   const updateContent = useStore((s) => s.updateContent)
   const saveTab = useStore((s) => s.saveTab)
+  const reloadTabFromDisk = useStore((s) => s.reloadTabFromDisk)
   const outlineOpen = useStore((s) => s.outlineOpen)
   const backlinks = useStore((s) => s.backlinks)
   const openWikilink = useStore((s) => s.openWikilink)
@@ -116,6 +117,28 @@ export default function Editor(): JSX.Element | null {
   return (
     <div className="editor">
       <Toolbar fileName={tab.name} dirty={tab.dirty} />
+      {tab.stale ? (
+        <div
+          style={{
+            background: '#ffeaa7',
+            color: '#333',
+            padding: '8px 12px',
+            fontSize: '13px',
+            borderBottom: '1px solid #ddd',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}
+        >
+          <span>⚠️ Arquivo foi modificado no disco. </span>
+          <button
+            onClick={() => void reloadTabFromDisk(active.vaultId, active.path)}
+            style={{ marginLeft: '12px', padding: '4px 8px', cursor: 'pointer' }}
+          >
+            Recarregar
+          </button>
+        </div>
+      ) : null}
       {editorMode === 'wysiwyg' ? (
         <FormatToolbar apiRef={editorApi} vaultId={active.vaultId} />
       ) : null}

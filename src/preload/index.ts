@@ -27,6 +27,8 @@ const api = {
   hasMarkdown: (vaultId: string, relPath: string) =>
     ipcRenderer.invoke('file:hasMarkdown', vaultId, relPath),
   read: (vaultId: string, relPath: string) => ipcRenderer.invoke('file:read', vaultId, relPath),
+  readMeta: (vaultId: string, relPath: string) =>
+    ipcRenderer.invoke('file:readMeta', vaultId, relPath),
   write: (vaultId: string, relPath: string, content: string) =>
     ipcRenderer.invoke('file:write', vaultId, relPath, content),
   createFile: (vaultId: string, relPath: string) =>

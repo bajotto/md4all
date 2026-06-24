@@ -25,6 +25,7 @@ import {
   listDir,
   listTree,
   readFile,
+  readFileMeta,
   remove,
   removeVault,
   rename,
@@ -93,6 +94,7 @@ export function registerIpc(): void {
     hasMarkdown(vaultId, relPath)
   )
   ipcMain.handle('file:read', (_e, vaultId: string, relPath: string) => readFile(vaultId, relPath))
+  ipcMain.handle('file:readMeta', (_e, vaultId: string, relPath: string) => readFileMeta(vaultId, relPath))
   ipcMain.handle('file:write', async (_e, vaultId: string, relPath: string, content: string) => {
     await writeFile(vaultId, relPath, content)
     await touchNote(vaultId, relPath)

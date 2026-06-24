@@ -159,6 +159,7 @@ export default function VaultRoot({ vault }: { vault: Vault }): JSX.Element {
   const createFolder = useStore((s) => s.createFolder)
   const pastePath = useStore((s) => s.pastePath)
   const clipboard = useStore((s) => s.clipboard)
+  const refreshTree = useStore((s) => s.refreshTree)
   const removeVault = useStore((s) => s.removeVault)
 
   const [modal, setModal] = useState<ModalState>(null)
@@ -185,6 +186,9 @@ export default function VaultRoot({ vault }: { vault: Vault }): JSX.Element {
   const doPaste = async (): Promise<void> => {
     await pastePath(vault.id, '')
   }
+  const doRefresh = async (): Promise<void> => {
+    await refreshTree(vault.id)
+  }
 
   return (
     <div className="vault-root">
@@ -202,6 +206,7 @@ export default function VaultRoot({ vault }: { vault: Vault }): JSX.Element {
         <span className="vault-root-icon">{vault.kind === 'sftp' ? '🌐' : '📁'}</span>
         <span className="vault-root-name">{vault.name}</span>
         <span className="tree-actions" onClick={(e) => e.stopPropagation()}>
+          <button title="Atualizar" onClick={doRefresh} disabled={loading}>⟳</button>
           <button title="Novo arquivo" onClick={askNewFile}>+</button>
           <button title="Nova pasta" onClick={askNewFolder}>⊞</button>
           {clipboard ? <button title="Colar" onClick={doPaste}>📌</button> : null}
