@@ -479,6 +479,35 @@ button {
   font-family: 'SF Mono', 'Fira Code', Menlo, Consolas, monospace;
 }
 
+/* ---------- splash ---------- */
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+}
+.splash-fade {
+  opacity: 0;
+}
+.splash-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+.splash-wordmark {
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  color: var(--text);
+}
+
 /* ---------- welcome ---------- */
 .welcome {
   flex: 1;
@@ -487,21 +516,31 @@ button {
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: 12px;
+  gap: 14px;
   color: var(--text-soft);
   padding: 40px;
 }
-.welcome h1 {
-  font-size: 34px;
+.welcome-title {
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
   margin: 0;
   color: var(--text);
 }
 .welcome-sub {
-  font-size: 15px;
+  font-size: 14px;
+  color: var(--text-soft);
+  max-width: 340px;
+}
+.welcome-cta {
+  margin-top: 6px;
 }
 .welcome-hint {
   font-size: 12px;
-  max-width: 360px;
+  max-width: 340px;
+  color: var(--text-soft);
+  opacity: 0.7;
+  line-height: 1.6;
 }
 .btn-primary {
   padding: 10px 18px;

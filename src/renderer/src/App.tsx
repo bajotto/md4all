@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar/Sidebar'
 import Tabs from './components/Tabs/Tabs'
 import Editor from './components/Editor/Editor'
 import Welcome from './components/Welcome'
+import Splash from './components/Splash'
 
 export default function App(): JSX.Element {
   const init = useStore((s) => s.init)
@@ -28,18 +29,21 @@ export default function App(): JSX.Element {
   }, [refreshTree, reloadTabFromDisk, loadBacklinks])
 
   return (
-    <div className="app">
-      <Sidebar />
-      <main className="workspace">
-        {vaults.length === 0 ? (
-          <Welcome />
-        ) : (
-          <>
-            <Tabs />
-            {active ? <Editor /> : <Welcome />}
-          </>
-        )}
-      </main>
-    </div>
+    <>
+      <Splash />
+      <div className="app">
+        <Sidebar />
+        <main className="workspace">
+          {vaults.length === 0 ? (
+            <Welcome />
+          ) : (
+            <>
+              <Tabs />
+              {active ? <Editor /> : <Welcome />}
+            </>
+          )}
+        </main>
+      </div>
+    </>
   )
 }
