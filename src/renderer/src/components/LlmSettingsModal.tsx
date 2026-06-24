@@ -1,5 +1,128 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { LlmConfigView } from '../types'
+
+interface ModelOption {
+  id: string
+  name: string
+  promptPrice: number
+  completionPrice: number
+}
+
+interface CuratedEntry {
+  id: string
+  display: string
+  stars: number   // 1–5
+  half?: boolean  // .5 estrela extra
+}
+
+const CURATED: CuratedEntry[] = [
+  { id: 'google/gemini-2.5-flash',               display: 'Gemini 2.5 Flash',      stars: 4 },
+  { id: 'anthropic/claude-haiku-4-5',            display: 'Claude Haiku 4.5',       stars: 4 },
+  { id: 'deepseek/deepseek-r1',                  display: 'DeepSeek R1',            stars: 4 },
+  { id: 'deepseek/deepseek-chat',                display: 'DeepSeek V3 (fast)',      stars: 4 },
+  { id: 'mistralai/mistral-small-24b-instruct-2501', display: 'Mistral Small 24B', stars: 3, half: true },
+  { id: 'qwen/qwen3-235b-a22b',                  display: 'Qwen3 235B',             stars: 3 },
+  { id: 'openai/gpt-4o-mini',                    display: 'GPT-4o Mini',            stars: 3 },
+  { id: 'meta-llama/llama-4-maverick',           display: 'Llama 4 Maverick',       stars: 3 },
+  { id: 'mistralai/mistral-nemo',                display: 'Mistral Nemo',           stars: 3 },
+]
+
+function stars(n: number, half?: boolean): string {
+  const full = '★'.repeat(n)
+  const h = half ? '½' : ''
+  const empty = '☆'.repeat(5 - n - (half ? 1 : 0))
+  return full + h + empty
+}
+
+function formatPrice(p: number): string {
+  if (p === 0) return 'grátis'
+  const pm = p * 1_000_000
+  if (pm < 0.01) return `$${(pm * 1000).toFixed(2)}/B`
+  return `$${pm.toFixed(2)}/M`
+}
+
+interface ModelSelectProps {
+  placeholder: string
+  value: string
+  onChange: (v: string) => void
+  priceMap: Map<string, ModelOption>
+  loading: boolean
+}
+
+function ModelSelect({ placeholder, value, onChange, priceMap, loading }: ModelSelectProps): JSX.Element {
+  const [open, setOpen] = useState(false)
+  const btnRef = useRef<HTMLButtonElement>(null)
+
+  const selected = CURATED.find((m) => m.id === value)
+
+  const select = (id: string): void => {
+    onChange(id)
+    setOpen(false)
+  }
+
+  const getPrice = (id: string): ModelOption | undefined => {
+    if (priceMap.has(id)) return priceMap.get(id)
+    // fallback: prefixo parcial (ex.: OR adiciona sufixo de versão)
+    for (const [k, v] of priceMap) {
+      if (k.startsWith(id) || id.startsWith(k)) return v
+    }
+    return undefined
+  }
+
+  return (
+    <div className="llm-combobox">
+      <button
+        ref={btnRef}
+        className="llm-select-btn"
+        onClick={() => setOpen((o) => !o)}
+        onBlur={() => setTimeout(() => setOpen(false), 160)}
+        type="button"
+      >
+        {selected ? (
+          <span className="llm-sel-label">
+            <span className="llm-combo-name">{selected.display}</span>
+            <span className="llm-sel-stars">{stars(selected.stars, selected.half)}</span>
+          </span>
+        ) : value ? (
+          <span className="llm-sel-unknown">{value}</span>
+        ) : (
+          <span className="llm-sel-placeholder">{placeholder}</span>
+        )}
+        <span className="llm-sel-arrow">{open ? '▲' : '▼'}</span>
+      </button>
+
+      {loading && <div className="llm-combo-loading">Buscando preços…</div>}
+
+      {open && (
+        <ul className="llm-combo-list">
+          {CURATED.map((m) => {
+            const price = getPrice(m.id)
+            return (
+              <li
+                key={m.id}
+                className={`llm-combo-item${m.id === value ? ' active' : ''}`}
+                onMouseDown={() => select(m.id)}
+              >
+                <div className="llm-combo-row">
+                  <span className="llm-combo-name">{m.display}</span>
+                  <span className="llm-sel-stars-sm">{stars(m.stars, m.half)}</span>
+                  {price ? (
+                    <span className="llm-combo-price">
+                      {formatPrice(price.promptPrice)} in · {formatPrice(price.completionPrice)} out
+                    </span>
+                  ) : (
+                    <span className="llm-combo-price llm-price-loading">—</span>
+                  )}
+                </div>
+                <span className="llm-combo-id">{m.id}</span>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 interface Props {
   onClose: () => void
@@ -13,6 +136,22 @@ export default function LlmSettingsModal({ onClose }: Props): JSX.Element {
   const [modelReviewer, setModelReviewer] = useState('')
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ ok: boolean; lines: string[] } | null>(null)
+  const [priceMap, setPriceMap] = useState<Map<string, ModelOption>>(new Map())
+  const [loadingPrices, setLoadingPrices] = useState(false)
+
+  const fetchPrices = async (tok?: string): Promise<void> => {
+    setLoadingPrices(true)
+    try {
+      const res = (await window.api.llmListModels(tok)) as { ok: boolean; models: ModelOption[] }
+      if (res.ok) {
+        const map = new Map<string, ModelOption>()
+        for (const m of res.models) map.set(m.id, m)
+        setPriceMap(map)
+      }
+    } finally {
+      setLoadingPrices(false)
+    }
+  }
 
   useEffect(() => {
     void (async () => {
@@ -20,8 +159,15 @@ export default function LlmSettingsModal({ onClose }: Props): JSX.Element {
       setHasToken(cfg.hasToken)
       setModelPrimary(cfg.modelPrimary)
       setModelReviewer(cfg.modelReviewer)
+      if (cfg.hasToken) void fetchPrices()
     })()
   }, [])
+
+  useEffect(() => {
+    if (!token.trim()) return
+    const t = setTimeout(() => void fetchPrices(token.trim()), 700)
+    return () => clearTimeout(t)
+  }, [token])
 
   const save = async (): Promise<void> => {
     if (busy) return
@@ -48,7 +194,7 @@ export default function LlmSettingsModal({ onClose }: Props): JSX.Element {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-box add-vault" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-box add-vault llm-config" onClick={(e) => e.stopPropagation()}>
         <p className="modal-title">Configurar LLM (OpenRouter)</p>
         <p className="modal-help">
           Usada para analisar a documentação contra o código. A chave é guardada cifrada localmente.
@@ -61,17 +207,21 @@ export default function LlmSettingsModal({ onClose }: Props): JSX.Element {
           value={token}
           onChange={(e) => setToken(e.target.value)}
         />
-        <input
-          className="modal-input"
-          placeholder="Modelo primário (ex.: anthropic/claude-3.5-sonnet)"
+
+        <ModelSelect
+          placeholder="Modelo primário"
           value={modelPrimary}
-          onChange={(e) => setModelPrimary(e.target.value)}
+          onChange={setModelPrimary}
+          priceMap={priceMap}
+          loading={loadingPrices}
         />
-        <input
-          className="modal-input"
-          placeholder="Modelo revisor / fallback (ex.: openai/gpt-4o)"
+
+        <ModelSelect
+          placeholder="Modelo revisor / fallback"
           value={modelReviewer}
-          onChange={(e) => setModelReviewer(e.target.value)}
+          onChange={setModelReviewer}
+          priceMap={priceMap}
+          loading={loadingPrices}
         />
 
         {msg ? (

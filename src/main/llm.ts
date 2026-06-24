@@ -119,6 +119,39 @@ export function parseJsonLoose<T>(raw: string): T {
   return JSON.parse(s) as T
 }
 
+export interface ModelOption {
+  id: string
+  name: string
+  promptPrice: number      // USD por token
+  completionPrice: number  // USD por token
+}
+
+/** Busca lista de modelos do OpenRouter com preços para um token específico. */
+export async function listModelsForToken(
+  token: string
+): Promise<{ ok: boolean; models: ModelOption[] }> {
+  try {
+    const res = await fetch(`${BASE}/models`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (!res.ok) return { ok: false, models: [] }
+    const data = (await res.json()) as {
+      data?: { id: string; name?: string; pricing?: { prompt?: string; completion?: string } }[]
+    }
+    const models: ModelOption[] = (data.data ?? [])
+      .map((m) => ({
+        id: m.id,
+        name: m.name ?? m.id,
+        promptPrice: parseFloat(m.pricing?.prompt ?? '0') || 0,
+        completionPrice: parseFloat(m.pricing?.completion ?? '0') || 0
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id))
+    return { ok: true, models }
+  } catch {
+    return { ok: false, models: [] }
+  }
+}
+
 export interface ValidateInput {
   token: string
   modelPrimary: string

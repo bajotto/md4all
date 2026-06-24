@@ -497,6 +497,104 @@ export async function applyAgents(
   return { backup, path: targetPath }
 }
 
+// ================= EXPORT / IMPORT PARA LLM EXTERNA =================
+
+/**
+ * Grava o prompt de auditoria num arquivo de texto no vault.
+ * O usuário cola o conteúdo na LLM externa e importa o JSON de resposta.
+ */
+export async function buildAuditPromptExport(vaultId: string): Promise<string> {
+  const docs = await collectDocs(vaultId)
+  const code = await collectCode(vaultId)
+  const ts = new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', '-')
+  const content = [
+    '<!-- PROMPT DE AUDITORIA gerado pelo md4all -->',
+    '<!-- 1. Copie TODO este texto e cole no chat da sua LLM (ex.: Claude.ai, ChatGPT). -->',
+    '<!-- 2. A LLM retornará um JSON. Salve-o como arquivo .json. -->',
+    '<!-- 3. Importe o .json em md4all via "Importar resultado". -->',
+    '',
+    '=== INSTRUÇÃO DO SISTEMA ===',
+    SYSTEM_AUDIT,
+    '',
+    '=== MENSAGEM ===',
+    buildAuditUserMessage(docs, code)
+  ].join('\n')
+  const path = `docs/_prompt_audit_${ts}.txt`
+  await writeFile(vaultId, path, content)
+  return path
+}
+
+/** Grava o prompt de análise/reescrita num arquivo de texto no vault. */
+export async function buildAnalyzePromptExport(vaultId: string): Promise<string> {
+  const docs = await collectDocs(vaultId)
+  const code = await collectCode(vaultId)
+  const ts = new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', '-')
+  const content = [
+    '<!-- PROMPT DE ANÁLISE gerado pelo md4all -->',
+    '<!-- 1. Copie TODO este texto e cole no chat da sua LLM (ex.: Claude.ai, ChatGPT). -->',
+    '<!-- 2. A LLM retornará um JSON. Salve-o como arquivo .json. -->',
+    '<!-- 3. Importe o .json em md4all via "Importar resultado". -->',
+    '',
+    '=== INSTRUÇÃO DO SISTEMA ===',
+    SYSTEM_DOC,
+    '',
+    '=== MENSAGEM ===',
+    buildAnalysisUserMessage(docs, code)
+  ].join('\n')
+  const path = `docs/_prompt_analyze_${ts}.txt`
+  await writeFile(vaultId, path, content)
+  return path
+}
+
+/** Processa o JSON retornado por LLM externa para auditoria (normalize + verify, sem chamar LLM). */
+export async function processImportedAudit(vaultId: string, rawJson: string): Promise<AuditReport> {
+  const parsed = JSON.parse(rawJson) as unknown
+  let findings = normalizeFindings(parsed)
+  findings = await verifyFindings(vaultId, findings)
+  const stateRank = (s: Finding['verify']): number => (s === 'verified' ? 0 : s === 'unverified' ? 1 : 2)
+  findings.sort(
+    (a, b) => SEV_ORDER[a.severity] - SEV_ORDER[b.severity] || stateRank(a.verify) - stateRank(b.verify)
+  )
+  const stats = {
+    docCount: 0,
+    codeCount: 0,
+    verified: findings.filter((f) => f.verify === 'verified').length,
+    unverified: findings.filter((f) => f.verify === 'unverified').length,
+    refuted: findings.filter((f) => f.verify === 'refuted').length
+  }
+  return { findings, usage: emptyUsage(), stats }
+}
+
+/** Processa o JSON retornado por LLM externa para análise/reescrita. */
+export function processImportedAnalyze(rawJson: string): AnalyzeResult {
+  const parsed = JSON.parse(rawJson) as AnalysisReport
+  const toStrArray = (v: unknown): string[] =>
+    (Array.isArray(v) ? v : v == null ? [] : [v]).map((x) =>
+      typeof x === 'string' ? x : JSON.stringify(x)
+    )
+  const clean: AnalysisReport = {
+    coherence: toStrArray(parsed.coherence),
+    contradictions: toStrArray(parsed.contradictions),
+    duplications: toStrArray(parsed.duplications),
+    codeMismatches: (Array.isArray(parsed.codeMismatches) ? parsed.codeMismatches : []).map((m) => ({
+      doc: String((m as { doc?: unknown })?.doc ?? ''),
+      claim: String((m as { claim?: unknown })?.claim ?? ''),
+      evidence: String((m as { evidence?: unknown })?.evidence ?? '')
+    })),
+    proposedTree: (Array.isArray(parsed.proposedTree) ? parsed.proposedTree : [])
+      .filter((f) => f && typeof f.path === 'string' && isDocPath(f.path))
+      .map((f) => ({
+        path: f.path,
+        content: typeof f.content === 'string' ? f.content : String(f.content ?? ''),
+        rationale: typeof f.rationale === 'string' ? f.rationale : String(f.rationale ?? ''),
+        status: (['created', 'updated', 'unchanged', 'removed'] as const).includes(f.status as never)
+          ? f.status
+          : 'updated'
+      }))
+  }
+  return { report: clean, usage: emptyUsage(), stats: { docCount: 0, codeCount: 0 } }
+}
+
 export async function applyProposal(
   vaultId: string,
   report: AnalysisReport,

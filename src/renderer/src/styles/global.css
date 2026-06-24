@@ -1243,6 +1243,16 @@ button {
   color: var(--text-soft);
 }
 .doc-center p { max-width: 520px; margin: 0; line-height: 1.5; }
+.doc-external-sep {
+  font-size: 11px;
+  color: var(--text-soft);
+  margin: 2px 0;
+}
+.doc-external-btns {
+  display: flex;
+  gap: 8px;
+}
+.doc-import-label { cursor: pointer; }
 
 .doc-spinner {
   width: 28px; height: 28px;
@@ -1427,6 +1437,95 @@ button {
 
 /* ===== navegador de diretório remoto (SFTP) ===== */
 .modal-box.rdir { width: min(520px, 92vw); }
+.modal-box.llm-config { min-width: min(560px, 92vw); }
+
+/* ---------- select de modelos LLM (lista curada) ---------- */
+.llm-combobox { position: relative; }
+.llm-select-btn {
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-elev);
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.llm-select-btn:hover { border-color: var(--accent); }
+.llm-sel-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.llm-sel-placeholder { color: var(--text-soft); }
+.llm-sel-unknown { color: var(--text-soft); font-size: 12px; }
+.llm-sel-stars { color: var(--accent); font-size: 12px; white-space: nowrap; }
+.llm-sel-stars-sm { color: var(--accent); font-size: 11px; white-space: nowrap; flex-shrink: 0; }
+.llm-sel-arrow { color: var(--text-soft); font-size: 10px; flex-shrink: 0; }
+.llm-price-loading { opacity: 0.4; }
+.llm-combo-loading {
+  font-size: 12px;
+  color: var(--text-soft);
+  padding: 2px 2px;
+  font-style: italic;
+}
+.llm-combo-list {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  max-height: 230px;
+  overflow-y: auto;
+  z-index: 10000;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.22);
+}
+.llm-combo-item {
+  display: flex;
+  flex-direction: column;
+  padding: 5px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  gap: 1px;
+}
+.llm-combo-item:hover,
+.llm-combo-item.active { background: var(--hover); }
+.llm-combo-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+.llm-combo-name {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.llm-combo-price {
+  font-size: 11px;
+  color: var(--accent);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.llm-combo-id {
+  font-size: 11px;
+  color: var(--text-soft);
+}
 .rdir-bar { display: flex; align-items: center; gap: 8px; }
 .rdir-path {
   flex: 1; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;

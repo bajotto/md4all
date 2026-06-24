@@ -1,6 +1,6 @@
 {
   "name": "md4all",
-  "version": "0.10.13",
+  "version": "0.10.14",
   "description": "Editor Markdown WYSIWYG completo (local / iCloud / SMB)",
   "main": "./out/main/index.js",
   "author": "md4all <noreply@md4all.app>",

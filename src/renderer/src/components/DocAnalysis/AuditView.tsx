@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useStore } from '../../store/useStore'
 import { SEVERITY_LABEL, Spinner, UsageLine, useDocProgress, VERIFY_LABEL } from './shared'
 import type { AuditReport, Finding } from '../../types'
@@ -36,6 +36,8 @@ export default function AuditView({ vaultId }: { vaultId: string }): JSX.Element
   const [report, setReport] = useState<AuditReport | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [exportedTo, setExportedTo] = useState<string | null>(null)
+  const [promptExportedTo, setPromptExportedTo] = useState<string | null>(null)
+  const importRef = useRef<HTMLInputElement>(null)
 
   const run = async (): Promise<void> => {
     setPhase('running')
@@ -44,6 +46,35 @@ export default function AuditView({ vaultId }: { vaultId: string }): JSX.Element
     setExportedTo(null)
     try {
       const r = (await window.api.docAudit(vaultId)) as AuditReport
+      setReport(r)
+      setPhase('done')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+      setPhase('error')
+    }
+  }
+
+  const exportPrompt = async (): Promise<void> => {
+    setPromptExportedTo(null)
+    try {
+      const path = (await window.api.docExportAuditPrompt(vaultId)) as string
+      setPromptExportedTo(path)
+    } catch (err) {
+      await window.api.showError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>): Promise<void> => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    setPhase('running')
+    setError(null)
+    setReport(null)
+    setExportedTo(null)
+    try {
+      const rawJson = await file.text()
+      const r = (await window.api.docImportAudit(vaultId, rawJson)) as AuditReport
       setReport(r)
       setPhase('done')
     } catch (err) {
@@ -74,6 +105,21 @@ export default function AuditView({ vaultId }: { vaultId: string }): JSX.Element
         <button className="modal-btn-ok" onClick={() => void run()}>
           Auditar
         </button>
+        <div className="doc-external-sep">— ou use LLM externa —</div>
+        <div className="doc-external-btns">
+          <button className="inline-btn" onClick={() => void exportPrompt()}>
+            Exportar prompt
+          </button>
+          <label className="inline-btn doc-import-label">
+            Importar resultado
+            <input ref={importRef} type="file" accept=".json" style={{ display: 'none' }} onChange={(e) => void handleImport(e)} />
+          </label>
+        </div>
+        {promptExportedTo ? (
+          <div className="doc-review ok" style={{ marginTop: 8, fontSize: 12 }}>
+            ✓ Prompt em <code>{promptExportedTo}</code> — cole na LLM e importe o JSON.
+          </div>
+        ) : null}
       </div>
     )
   if (phase === 'running') return <Spinner msg={progress?.msg} pct={progress?.pct} />

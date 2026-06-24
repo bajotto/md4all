@@ -68,6 +68,7 @@ const api = {
     ipcRenderer.invoke('export:pdf', vaultId, relPath, markdown),
 
   // LLM (OpenRouter) + análise de documentação
+  llmListModels: (token?: string) => ipcRenderer.invoke('llm:listModels', token),
   llmGetConfig: () => ipcRenderer.invoke('llm:getConfig'),
   llmValidate: (input: unknown) => ipcRenderer.invoke('llm:validate', input),
   llmSaveConfig: (input: unknown) => ipcRenderer.invoke('llm:saveConfig', input),
@@ -80,6 +81,11 @@ const api = {
     ipcRenderer.invoke('doc:agents', vaultId, targetPath),
   docAgentsApply: (vaultId: string, targetPath: string, content: string) =>
     ipcRenderer.invoke('doc:agentsApply', vaultId, targetPath, content),
+  docExportAuditPrompt: (vaultId: string) => ipcRenderer.invoke('doc:exportAuditPrompt', vaultId),
+  docExportAnalyzePrompt: (vaultId: string) => ipcRenderer.invoke('doc:exportAnalyzePrompt', vaultId),
+  docImportAudit: (vaultId: string, rawJson: string) =>
+    ipcRenderer.invoke('doc:importAudit', vaultId, rawJson),
+  docImportAnalyze: (rawJson: string) => ipcRenderer.invoke('doc:importAnalyze', rawJson),
   onDocProgress: (cb: (payload: { msg: string; pct?: number }) => void) => {
     const listener = (_e: unknown, payload: { msg: string; pct?: number }): void => cb(payload)
     ipcRenderer.on('doc:progress', listener)

@@ -5,14 +5,10 @@ import { exportHtml, exportPdf } from './export'
 import { search } from './search'
 import { watchVault } from './watcher'
 import { decryptSecret, encryptSecret } from './sftp'
-import { validateLlmConfig } from './llm'
+import { listModelsForToken, validateLlmConfig } from './llm'
 import {
-  analyze,
-  applyAgents,
-  applyProposal,
-  audit,
-  generateAgentsContext,
-  reviewProposal
+  audit, analyze, reviewProposal, applyProposal, generateAgentsContext, applyAgents,
+  buildAuditPromptExport, buildAnalyzePromptExport, processImportedAudit, processImportedAnalyze
 } from './docAnalysis'
 import type { AnalysisReport } from './types'
 import {
@@ -159,6 +155,12 @@ export function registerIpc(): void {
   )
 
   // ---- LLM (OpenRouter) ----
+  ipcMain.handle('llm:listModels', async (_e, token?: string) => {
+    const effectiveToken = token?.trim() || decryptSecret(getSettings().llm?.encToken) || ''
+    if (!effectiveToken) return { ok: false, models: [] }
+    return listModelsForToken(effectiveToken)
+  })
+
   ipcMain.handle('llm:getConfig', () => {
     const llm = getSettings().llm ?? {}
     return {
@@ -216,5 +218,17 @@ export function registerIpc(): void {
   )
   ipcMain.handle('doc:agentsApply', (_e, vaultId: string, targetPath: string, content: string) =>
     applyAgents(vaultId, targetPath || 'AGENTS.md', content)
+  )
+  ipcMain.handle('doc:exportAuditPrompt', (_e, vaultId: string) =>
+    buildAuditPromptExport(vaultId)
+  )
+  ipcMain.handle('doc:exportAnalyzePrompt', (_e, vaultId: string) =>
+    buildAnalyzePromptExport(vaultId)
+  )
+  ipcMain.handle('doc:importAudit', (_e, vaultId: string, rawJson: string) =>
+    processImportedAudit(vaultId, rawJson)
+  )
+  ipcMain.handle('doc:importAnalyze', (_e, rawJson: string) =>
+    processImportedAnalyze(rawJson)
   )
 }
