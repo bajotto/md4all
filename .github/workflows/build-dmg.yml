@@ -65,6 +65,7 @@ jobs:
             dist/*.AppImage
             dist/*.deb
           if-no-files-found: warn
+          retention-days: 1
 
   # Junta os artefatos das 3 plataformas e cria UM release (evita corrida).
   release:
@@ -89,3 +90,12 @@ jobs:
           files: artifacts/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Limpar artifacts para economizar storage
+        if: always()
+        uses: geekyeggo/delete-artifact@v2
+        with:
+          name: |
+            installers-macos-latest
+            installers-ubuntu-latest
+            installers-windows-latest
