@@ -120,6 +120,7 @@ export default function Editor(): JSX.Element | null {
         }
         if (revealTarget.query) {
           ctrl.setQuery(revealTarget.query, opts)
+          ctrl.goTo(0)
         }
         editorApi.current?.focus()
       }
@@ -160,18 +161,7 @@ export default function Editor(): JSX.Element | null {
     <div className="editor">
       <Toolbar fileName={tab.name} dirty={tab.dirty} />
       {tab.stale ? (
-        <div
-          style={{
-            background: '#ffeaa7',
-            color: '#333',
-            padding: '8px 12px',
-            fontSize: '13px',
-            borderBottom: '1px solid #ddd',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}
-        >
+        <div className="stale-banner">
           <span>⚠️ Arquivo foi modificado no disco. </span>
           <button
             onClick={() => void reloadTabFromDisk(active.vaultId, active.path)}

@@ -578,6 +578,16 @@ button {
   flex-direction: column;
   min-height: 0;
 }
+.stale-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: 13px;
+  background: color-mix(in srgb, var(--accent-soft) 60%, var(--bg-elev));
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
 .editor-toolbar {
   display: flex;
   align-items: center;

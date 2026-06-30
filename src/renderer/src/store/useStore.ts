@@ -546,20 +546,14 @@ export const useStore = create<State>((set, get) => ({
       return
     }
     set({ searching: true })
-    const all: SearchHit[] = []
-    for (const v of vaults) {
-      try {
-        const hits = (await api.search(v.id, query)) as Array<{
-          path: string
-          line: number
-          preview: string
-        }>
-        for (const h of hits) all.push({ ...h, vaultId: v.id, vaultName: v.name })
-      } catch {
-        /* ignora vault que falhar (ex.: sftp offline) */
-      }
-    }
-    set({ searchResults: all, searching: false })
+    const settled = await Promise.all(
+      vaults.map((v) =>
+        (api.search(v.id, query) as Promise<Array<{ path: string; line: number; preview: string }>>)
+          .then((hits) => hits.map((h) => ({ ...h, vaultId: v.id, vaultName: v.name })))
+          .catch(() => [] as SearchHit[])
+      )
+    )
+    set({ searchResults: settled.flat(), searching: false })
   },
 
   clearSearch: () => set({ searchQuery: '', searchResults: [] }),
