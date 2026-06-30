@@ -553,10 +553,12 @@ export const useStore = create<State>((set, get) => ({
           .catch(() => [] as SearchHit[])
       )
     )
+    // descarta resultado se o usuário já digitou outra query (race condition)
+    if (get().searchQuery !== query) return
     set({ searchResults: settled.flat(), searching: false })
   },
 
-  clearSearch: () => set({ searchQuery: '', searchResults: [] }),
+  clearSearch: () => set({ searchQuery: '', searchResults: [], searching: false }),
 
   toggleSearchPanel: () => set({ searchPanelOpen: !get().searchPanelOpen }),
   openSearchPanel: (mode) =>
