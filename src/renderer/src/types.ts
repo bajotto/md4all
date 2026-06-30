@@ -23,6 +23,23 @@ export interface SearchHit {
   preview: string
 }
 
+/** Resultado da busca por AI (LLM lê todos os .md e resume a relevância). */
+export interface AiHit {
+  vaultId: string
+  vaultName: string
+  path: string
+  summary: string
+  score: number
+}
+
+/** Alvo de navegação ao clicar num resultado: revela a linha/termo no editor. */
+export interface RevealTarget {
+  vaultId: string
+  path: string
+  line: number
+  query: string
+}
+
 export interface AppSettings {
   vaults: Vault[]
   activeVaultId: string | null

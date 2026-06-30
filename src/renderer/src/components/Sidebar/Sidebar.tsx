@@ -1,5 +1,4 @@
 import VaultPicker from './VaultPicker'
-import Search from './Search'
 import VaultRoot from './FileTree'
 import TagPanel from './TagPanel'
 import { useStore } from '../../store/useStore'
@@ -15,7 +14,6 @@ export default function Sidebar(): JSX.Element {
         <p className="sidebar-empty">Adicione um vault (local ou SSH) para começar.</p>
       ) : (
         <>
-          <Search />
           <div className="vault-roots">
             {vaults.map((v) => (
               <VaultRoot key={v.id} vault={v} />

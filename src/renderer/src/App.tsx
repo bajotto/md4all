@@ -5,6 +5,8 @@ import Tabs from './components/Tabs/Tabs'
 import Editor from './components/Editor/Editor'
 import Welcome from './components/Welcome'
 import Splash from './components/Splash'
+import SearchPanel from './components/SearchPanel/SearchPanel'
+import LlmSettingsModal from './components/LlmSettingsModal'
 
 export default function App(): JSX.Element {
   const init = useStore((s) => s.init)
@@ -13,10 +15,27 @@ export default function App(): JSX.Element {
   const refreshTree = useStore((s) => s.refreshTree)
   const reloadTabFromDisk = useStore((s) => s.reloadTabFromDisk)
   const loadBacklinks = useStore((s) => s.loadBacklinks)
+  const openSearchPanel = useStore((s) => s.openSearchPanel)
+  const llmSettingsOpen = useStore((s) => s.llmSettingsOpen)
+  const setLlmSettingsOpen = useStore((s) => s.setLlmSettingsOpen)
 
   useEffect(() => {
     void init()
   }, [init])
+
+  // Cmd/Ctrl+Shift+F abre o painel de busca global (não conflita com Cmd/Ctrl+F,
+  // que é a busca dentro do arquivo via FindBar)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent): void => {
+      const mod = e.ctrlKey || e.metaKey
+      if (mod && e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        openSearchPanel()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [openSearchPanel])
 
   // reage a mudanças externas no filesystem (chokidar -> IPC), por vault
   useEffect(() => {
@@ -43,7 +62,9 @@ export default function App(): JSX.Element {
             </>
           )}
         </main>
+        <SearchPanel />
       </div>
+      {llmSettingsOpen ? <LlmSettingsModal onClose={() => setLlmSettingsOpen(false)} /> : null}
     </>
   )
 }

@@ -45,6 +45,14 @@ const api = {
 
   // busca
   search: (vaultId: string, query: string) => ipcRenderer.invoke('search:run', vaultId, query),
+  aiSearch: (vaultId: string, query: string) => ipcRenderer.invoke('search:ai', vaultId, query),
+  onAiSearchProgress: (cb: (payload: { msg: string; pct?: number }) => void) => {
+    const listener = (_e: unknown, payload: { msg: string; pct?: number }): void => cb(payload)
+    ipcRenderer.on('search:ai-progress', listener)
+    return () => {
+      ipcRenderer.removeListener('search:ai-progress', listener)
+    }
+  },
 
   // índice (wikilinks / tags / backlinks)
   indexBuild: (vaultId: string) => ipcRenderer.invoke('index:build', vaultId),

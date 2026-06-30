@@ -12,6 +12,8 @@ export default function Toolbar({ fileName, dirty }: Props): JSX.Element {
   const exportActive = useStore((s) => s.exportActive)
   const outlineOpen = useStore((s) => s.outlineOpen)
   const toggleOutline = useStore((s) => s.toggleOutline)
+  const searchPanelOpen = useStore((s) => s.searchPanelOpen)
+  const toggleSearchPanel = useStore((s) => s.toggleSearchPanel)
 
   const select = (mode: EditorMode): void => setEditorMode(mode)
 
@@ -27,6 +29,13 @@ export default function Toolbar({ fileName, dirty }: Props): JSX.Element {
         {dirty ? <span className="dot-dirty" title="Não salvo" /> : null}
       </div>
       <div className="toolbar-right">
+        <button
+          className={`outline-toggle${searchPanelOpen ? ' active' : ''}`}
+          onClick={toggleSearchPanel}
+          title="Buscar (Cmd/Ctrl+Shift+F)"
+        >
+          🔍 Buscar
+        </button>
         <button
           className={`outline-toggle${outlineOpen ? ' active' : ''}`}
           onClick={toggleOutline}

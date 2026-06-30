@@ -1,11 +1,14 @@
 import { create } from 'zustand'
 import type {
+  AiHit,
   AppSettings,
   BacklinkRef,
   EditorMode,
   FileNode,
+  LlmUsage,
   NoteRef,
   OpenTab,
+  RevealTarget,
   SearchHit,
   SftpInput,
   TagInfo,
@@ -64,6 +67,19 @@ interface State {
   searchResults: SearchHit[]
   searching: boolean
 
+  // painel de busca (drawer direito) + busca por AI
+  searchPanelOpen: boolean
+  searchMode: 'local' | 'hibrida'
+  aiQuery: string
+  aiResults: AiHit[]
+  aiSearching: boolean
+  aiUsage: LlmUsage | null
+  aiError: string | null
+  revealTarget: RevealTarget | null
+
+  // modal de configuração da LLM (compartilhado p/ abrir a partir do painel AI)
+  llmSettingsOpen: boolean
+
   // PKM (índice: wikilinks / tags / backlinks)
   backlinks: BacklinkRef[]
   tagFilter: { tag: string; notes: NoteRef[] } | null
@@ -103,6 +119,17 @@ interface State {
   runSearch: (query: string) => Promise<void>
   clearSearch: () => void
 
+  // painel de busca + AI + reveal
+  toggleSearchPanel: () => void
+  openSearchPanel: (mode?: 'local' | 'hibrida') => void
+  closeSearchPanel: () => void
+  setSearchMode: (mode: 'local' | 'hibrida') => void
+  runAiSearch: (query: string) => Promise<void>
+  clearAiSearch: () => void
+  revealHit: (hit: SearchHit) => Promise<void>
+  clearReveal: () => void
+  setLlmSettingsOpen: (open: boolean) => void
+
   // PKM
   loadBacklinks: () => Promise<void>
   openWikilink: (target: string) => Promise<void>
@@ -136,6 +163,15 @@ export const useStore = create<State>((set, get) => ({
   searchQuery: '',
   searchResults: [],
   searching: false,
+  searchPanelOpen: false,
+  searchMode: 'local',
+  aiQuery: '',
+  aiResults: [],
+  aiSearching: false,
+  aiUsage: null,
+  aiError: null,
+  revealTarget: null,
+  llmSettingsOpen: false,
   backlinks: [],
   tagFilter: null,
 
@@ -527,6 +563,56 @@ export const useStore = create<State>((set, get) => ({
   },
 
   clearSearch: () => set({ searchQuery: '', searchResults: [] }),
+
+  toggleSearchPanel: () => set({ searchPanelOpen: !get().searchPanelOpen }),
+  openSearchPanel: (mode) =>
+    set({ searchPanelOpen: true, ...(mode ? { searchMode: mode } : {}) }),
+  closeSearchPanel: () => set({ searchPanelOpen: false }),
+  setSearchMode: (mode) => set({ searchMode: mode }),
+
+  runAiSearch: async (query) => {
+    const { active, vaults } = get()
+    const vaultId = active?.vaultId ?? vaults[0]?.id
+    set({ aiQuery: query })
+    if (!query.trim() || !vaultId) {
+      set({ aiResults: [], aiSearching: false, aiUsage: null, aiError: null })
+      return
+    }
+    set({ aiSearching: true, aiError: null, aiResults: [], aiUsage: null })
+    try {
+      const res = (await api.aiSearch(vaultId, query)) as {
+        results: Array<{ path: string; summary: string; score: number }>
+        usage: LlmUsage
+      }
+      const vaultName = vaults.find((v) => v.id === vaultId)?.name ?? ''
+      const results: AiHit[] = res.results.map((r) => ({ ...r, vaultId, vaultName }))
+      set({ aiResults: results, aiUsage: res.usage, aiSearching: false })
+    } catch (err) {
+      set({
+        aiSearching: false,
+        aiError: err instanceof Error ? err.message : String(err)
+      })
+    }
+  },
+
+  clearAiSearch: () => set({ aiQuery: '', aiResults: [], aiUsage: null, aiError: null }),
+
+  // abre o arquivo do hit e marca a linha/termo para o editor revelar
+  revealHit: async (hit) => {
+    await get().openFile(hit.vaultId, hit.path)
+    set({
+      revealTarget: {
+        vaultId: hit.vaultId,
+        path: hit.path,
+        line: hit.line,
+        query: get().searchQuery
+      }
+    })
+  },
+
+  clearReveal: () => set({ revealTarget: null }),
+
+  setLlmSettingsOpen: (open) => set({ llmSettingsOpen: open }),
 
   loadBacklinks: async () => {
     const { active } = get()

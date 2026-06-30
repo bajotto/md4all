@@ -3,6 +3,7 @@ import path from 'path'
 import { getSettings, setSettings } from './settings'
 import { exportHtml, exportPdf } from './export'
 import { search } from './search'
+import { aiSearch } from './aiSearch'
 import { watchVault } from './watcher'
 import { decryptSecret, encryptSecret } from './sftp'
 import { listModelsForToken, validateLlmConfig } from './llm'
@@ -130,6 +131,9 @@ export function registerIpc(): void {
 
   // ---- busca ----
   ipcMain.handle('search:run', (_e, vaultId: string, query: string) => search(vaultId, query))
+  ipcMain.handle('search:ai', (e, vaultId: string, query: string) =>
+    aiSearch(vaultId, query, (msg, pct) => e.sender.send('search:ai-progress', { msg, pct }))
+  )
 
   // ---- dialogs nativos ----
   ipcMain.handle('dialog:confirm', async (_e, message: string) => {

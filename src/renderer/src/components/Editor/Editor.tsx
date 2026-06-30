@@ -25,6 +25,8 @@ export default function Editor(): JSX.Element | null {
   const openWikilink = useStore((s) => s.openWikilink)
   const filterByTag = useStore((s) => s.filterByTag)
   const openFile = useStore((s) => s.openFile)
+  const revealTarget = useStore((s) => s.revealTarget)
+  const clearReveal = useStore((s) => s.clearReveal)
 
   const tab = active ? tabs.find((t) => t.vaultId === active.vaultId && t.path === active.path) : undefined
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -91,6 +93,49 @@ export default function Editor(): JSX.Element | null {
     })
     return off
   }, [])
+
+  // revela a linha/termo de um resultado de busca clicado. Em modo código vai
+  // direto à linha (CodeMirror); em WYSIWYG destaca o termo e posiciona o cursor
+  // (ProseMirror via SearchController.setQuery). Usa retry porque o Milkdown
+  // inicializa o apiRef de forma assíncrona (dentro do callback de montagem).
+  useEffect(() => {
+    if (!revealTarget || !active) return
+    if (revealTarget.vaultId !== active.vaultId || revealTarget.path !== active.path) return
+    let cancelled = false
+    let rafId: number
+    let timerId: ReturnType<typeof setTimeout>
+
+    const tryReveal = (): void => {
+      if (cancelled) return
+      const opts = { caseSensitive: false, regex: false }
+      if (editorMode === 'source') {
+        if (!cmNav.current) {
+          timerId = setTimeout(tryReveal, 50)
+          return
+        }
+        cmNav.current.goToLine(revealTarget.line)
+        if (revealTarget.query) cmSearch.current?.setQuery(revealTarget.query, opts)
+      } else {
+        const ctrl = editorApi.current?.search
+        if (!ctrl) {
+          timerId = setTimeout(tryReveal, 50)
+          return
+        }
+        if (revealTarget.query) {
+          ctrl.setQuery(revealTarget.query, opts)
+        }
+        editorApi.current?.focus()
+      }
+      clearReveal()
+    }
+
+    rafId = requestAnimationFrame(tryReveal)
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(rafId)
+      clearTimeout(timerId)
+    }
+  }, [revealTarget, active, editorMode, activeKey, clearReveal])
 
   const handleChange = useCallback(
     (markdown: string) => {
