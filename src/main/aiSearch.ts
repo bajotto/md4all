@@ -66,12 +66,15 @@ function normalize(raw: unknown, docs: { path: string; content: string }[]): AiS
   const arr = Array.isArray((raw as { results?: unknown })?.results)
     ? (raw as { results: unknown[] }).results
     : []
+  const seen = new Set<number>()
   const hits: AiSearchHit[] = []
   for (const r of arr) {
     const o = (r ?? {}) as Record<string, unknown>
     const idx =
       typeof o.index === 'number' ? Math.round(o.index) : parseInt(String(o.index ?? '-1'), 10)
     if (isNaN(idx) || idx < 0 || idx >= docs.length) continue
+    if (seen.has(idx)) continue
+    seen.add(idx)
     let score = typeof o.score === 'number' ? o.score : parseFloat(String(o.score ?? '0')) || 0
     score = Math.max(0, Math.min(1, score))
     hits.push({ path: docs[idx].path, summary: String(o.summary ?? ''), score })

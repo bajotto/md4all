@@ -11,6 +11,9 @@ export default function SearchPanel(): JSX.Element | null {
   const close = useStore((s) => s.closeSearchPanel)
   const runSearch = useStore((s) => s.runSearch)
   const clearSearch = useStore((s) => s.clearSearch)
+  const runAiSearch = useStore((s) => s.runAiSearch)
+  const clearAiSearch = useStore((s) => s.clearAiSearch)
+  const aiSearching = useStore((s) => s.aiSearching)
   const searchQuery = useStore((s) => s.searchQuery)
 
   const [query, setQuery] = useState(searchQuery)
@@ -22,18 +25,20 @@ export default function SearchPanel(): JSX.Element | null {
     if (open) inputRef.current?.focus()
   }, [open])
 
-  // busca literal com debounce de 250ms
+  // busca literal com debounce de 250ms; limpa resultados AI se query mudar
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current)
     if (!query.trim()) {
       clearSearch()
+      clearAiSearch()
       return
     }
+    clearAiSearch()
     timer.current = setTimeout(() => void runSearch(query), 250)
     return () => {
       if (timer.current) clearTimeout(timer.current)
     }
-  }, [query, runSearch, clearSearch])
+  }, [query, runSearch, clearSearch, clearAiSearch])
 
   if (!open) return null
 
@@ -65,6 +70,11 @@ export default function SearchPanel(): JSX.Element | null {
         placeholder={mode === 'local' ? 'Buscar texto em todos os vaults…' : 'O que você procura?'}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && mode === 'hibrida' && !aiSearching && query.trim()) {
+            void runAiSearch(query)
+          }
+        }}
       />
       <div className="search-drawer-body">
         <LiteralSearch />
