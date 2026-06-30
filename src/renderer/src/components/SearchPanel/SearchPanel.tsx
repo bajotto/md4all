@@ -66,8 +66,10 @@ export default function SearchPanel(): JSX.Element | null {
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
-      <LiteralSearch />
-      {mode === 'hibrida' ? <AiSearch query={query} /> : null}
+      <div className="search-drawer-body">
+        <LiteralSearch />
+        {mode === 'hibrida' ? <AiSearch query={query} /> : null}
+      </div>
     </aside>
   )
 }

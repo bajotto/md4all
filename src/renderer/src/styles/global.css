@@ -158,8 +158,8 @@ button {
 }
 .search-drawer .search-results {
   max-height: none;
-  overflow-y: auto;
-  flex: 1;
+  overflow-y: visible;
+  flex: none;
   padding: 0 12px;
   margin-top: 0;
 }
@@ -249,9 +249,12 @@ button {
   flex: none;
   margin: 8px 12px 4px;
 }
-.search-drawer > p.search-status {
-  padding: 0 12px;
-  margin: 4px 0 0;
+.search-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 .search-section-label {
   display: flex;
@@ -267,7 +270,7 @@ button {
 .ai-search-section {
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  flex: none;
   border-top: 1px solid var(--border);
   margin-top: 4px;
 }
