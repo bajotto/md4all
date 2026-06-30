@@ -19,6 +19,8 @@ export default function AiSearch({ query }: Props): JSX.Element {
   const setLlmSettingsOpen = useStore((s) => s.setLlmSettingsOpen)
   const vaults = useStore((s) => s.vaults)
 
+  const llmSettingsOpen = useStore((s) => s.llmSettingsOpen)
+
   const [progress, setProgress] = useState<string | null>(null)
   const [cfg, setCfg] = useState<LlmConfigView | null>(null)
   const mounted = useRef(true)
@@ -30,7 +32,9 @@ export default function AiSearch({ query }: Props): JSX.Element {
     }
   }, [])
 
+  // recarrega config quando o modal de LLM fechar (usuário pode ter salvo novo token/modelo)
   useEffect(() => {
+    if (llmSettingsOpen) return
     void (async () => {
       try {
         const c = (await window.api.llmGetConfig()) as LlmConfigView
@@ -39,7 +43,7 @@ export default function AiSearch({ query }: Props): JSX.Element {
         if (mounted.current) setCfg(null)
       }
     })()
-  }, [])
+  }, [llmSettingsOpen])
 
   useEffect(() => {
     const off = window.api.onAiSearchProgress((p) => setProgress(p.msg))

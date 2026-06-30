@@ -597,17 +597,12 @@ export const useStore = create<State>((set, get) => ({
 
   clearAiSearch: () => set({ aiQuery: '', aiResults: [], aiUsage: null, aiError: null }),
 
-  // abre o arquivo do hit e marca a linha/termo para o editor revelar
+  // abre o arquivo do hit e marca a linha/termo para o editor revelar.
+  // Captura searchQuery antes do await para não pegar valor obsoleto (ex.: SFTP).
   revealHit: async (hit) => {
+    const query = get().searchQuery
     await get().openFile(hit.vaultId, hit.path)
-    set({
-      revealTarget: {
-        vaultId: hit.vaultId,
-        path: hit.path,
-        line: hit.line,
-        query: get().searchQuery
-      }
-    })
+    set({ revealTarget: { vaultId: hit.vaultId, path: hit.path, line: hit.line, query } })
   },
 
   clearReveal: () => set({ revealTarget: null }),

@@ -28,10 +28,7 @@ export default function App(): JSX.Element {
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
       const mod = e.ctrlKey || e.metaKey
-      if (mod && !e.shiftKey && e.key.toLowerCase() === 'f') {
-        e.preventDefault()
-        openSearchPanel()
-      } else if (mod && e.shiftKey && e.key.toLowerCase() === 'f') {
+      if (mod && e.key.toLowerCase() === 'f') {
         e.preventDefault()
         openSearchPanel()
       }

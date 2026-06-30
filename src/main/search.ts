@@ -1,23 +1,17 @@
-import { listTree, readFile } from './vault'
-import type { FileNode, SearchHit } from './types'
+import { collectPaths, readFile } from './vault'
+import type { SearchHit } from './types'
 
 const MAX_HITS = 500 // teto total (evita inundar a UI)
 const MAX_PER_FILE = 50 // teto por arquivo (idem)
 
-function collectFiles(nodes: FileNode[], out: string[]): void {
-  for (const n of nodes) {
-    if (n.isDir) collectFiles(n.children ?? [], out)
-    else out.push(n.path)
-  }
-}
+// extensões de texto pesquisáveis (mesmas do docAnalysis)
+const SEARCH_EXTS = new Set(['.md', '.markdown', '.mdown', '.mkd', '.txt'])
 
 export async function search(vaultId: string, query: string): Promise<SearchHit[]> {
   const q = query.trim().toLowerCase()
   if (!q) return []
 
-  const tree = await listTree(vaultId)
-  const files: string[] = []
-  collectFiles(tree, files)
+  const files = await collectPaths(vaultId, SEARCH_EXTS)
 
   const hits: SearchHit[] = []
   for (const rel of files) {
