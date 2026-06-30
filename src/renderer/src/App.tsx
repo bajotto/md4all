@@ -23,18 +23,29 @@ export default function App(): JSX.Element {
     void init()
   }, [init])
 
-  // Cmd/Ctrl+Shift+F abre o painel de busca global (não conflita com Cmd/Ctrl+F,
-  // que é a busca dentro do arquivo via FindBar)
+  // Cmd/Ctrl+F e menu "Localizar" abrem o painel de busca global
+  // Cmd/Ctrl+Shift+F também abre (atalho alternativo)
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
       const mod = e.ctrlKey || e.metaKey
-      if (mod && e.shiftKey && e.key.toLowerCase() === 'f') {
+      if (mod && !e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        openSearchPanel()
+      } else if (mod && e.shiftKey && e.key.toLowerCase() === 'f') {
         e.preventDefault()
         openSearchPanel()
       }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
+  }, [openSearchPanel])
+
+  // menu nativo "Localizar" → drawer de busca; "Substituir" → FindBar (no Editor)
+  useEffect(() => {
+    const off = window.api.onMenu((cmd) => {
+      if (cmd === 'find') openSearchPanel()
+    })
+    return off
   }, [openSearchPanel])
 
   // reage a mudanças externas no filesystem (chokidar -> IPC), por vault

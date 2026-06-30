@@ -32,7 +32,7 @@ export default function Toolbar({ fileName, dirty }: Props): JSX.Element {
         <button
           className={`outline-toggle${searchPanelOpen ? ' active' : ''}`}
           onClick={toggleSearchPanel}
-          title="Buscar (Cmd/Ctrl+Shift+F)"
+          title="Buscar (Cmd/Ctrl+F)"
         >
           🔍 Buscar
         </button>

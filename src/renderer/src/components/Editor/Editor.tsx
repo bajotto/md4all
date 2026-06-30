@@ -63,16 +63,16 @@ export default function Editor(): JSX.Element | null {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeKey, saveTab])
 
-  // atalhos: Cmd/Ctrl+S salva, Cmd/Ctrl+F abre busca, Cmd/Ctrl+Alt+F substituição
+  // atalho Cmd/Ctrl+S salva; Cmd/Ctrl+Alt+F abre substituição (Find+Replace)
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
       const mod = e.ctrlKey || e.metaKey
       if (mod && e.key.toLowerCase() === 's') {
         e.preventDefault()
         if (active) void saveTab(active.vaultId, active.path)
-      } else if (mod && e.key.toLowerCase() === 'f') {
+      } else if (mod && e.altKey && e.key.toLowerCase() === 'f') {
         e.preventDefault()
-        setFindReplace(e.altKey)
+        setFindReplace(true)
         setFindOpen(true)
       }
     }
@@ -80,13 +80,10 @@ export default function Editor(): JSX.Element | null {
     return () => window.removeEventListener('keydown', handler)
   }, [active, saveTab])
 
-  // comandos vindos do menu nativo (Edit -> Localizar / Substituir)
+  // menu nativo "Substituir" abre o FindBar em modo replace
   useEffect(() => {
     const off = window.api.onMenu((cmd) => {
-      if (cmd === 'find') {
-        setFindReplace(false)
-        setFindOpen(true)
-      } else if (cmd === 'replace') {
+      if (cmd === 'replace') {
         setFindReplace(true)
         setFindOpen(true)
       }
