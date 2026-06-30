@@ -580,6 +580,11 @@ export const useStore = create<State>((set, get) => ({
         results: Array<{ path: string; summary: string; score: number }>
         usage: LlmUsage
       }
+      // descarta resultado se o usuário mudou a query enquanto a busca corria
+      if (get().aiQuery !== query) {
+        set({ aiSearching: false })
+        return
+      }
       const vaultName = vaults.find((v) => v.id === vaultId)?.name ?? ''
       const results: AiHit[] = res.results.map((r) => ({ ...r, vaultId, vaultName }))
       set({ aiResults: results, aiUsage: res.usage, aiSearching: false })
@@ -591,7 +596,8 @@ export const useStore = create<State>((set, get) => ({
     }
   },
 
-  clearAiSearch: () => set({ aiQuery: '', aiResults: [], aiUsage: null, aiError: null }),
+  clearAiSearch: () =>
+    set({ aiQuery: '', aiResults: [], aiUsage: null, aiError: null, aiSearching: false }),
 
   // abre o arquivo do hit e marca a linha/termo para o editor revelar.
   // Captura searchQuery antes do await para não pegar valor obsoleto (ex.: SFTP).
