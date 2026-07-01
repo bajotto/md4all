@@ -170,32 +170,58 @@ export function registerIpc(): void {
     return {
       hasToken: !!llm.encToken,
       modelPrimary: llm.modelPrimary ?? '',
-      modelReviewer: llm.modelReviewer ?? ''
+      modelReviewer: llm.modelReviewer ?? '',
+      hasSwellToken: !!llm.encSwellToken,
+      swellUrl: llm.swellUrl ?? ''
     }
   })
   ipcMain.handle(
     'llm:validate',
-    (_e, input: { token: string; modelPrimary: string; modelReviewer: string }) =>
-      validateLlmConfig(input)
+    (
+      _e,
+      input: {
+        token: string
+        modelPrimary: string
+        modelReviewer: string
+        swellUrl?: string
+        swellToken?: string
+      }
+    ) => validateLlmConfig(input)
   )
   ipcMain.handle(
     'llm:saveConfig',
-    async (_e, input: { token: string; modelPrimary: string; modelReviewer: string }) => {
+    async (
+      _e,
+      input: {
+        token: string
+        modelPrimary: string
+        modelReviewer: string
+        swellUrl?: string
+        swellToken?: string
+      }
+    ) => {
       // token vazio + token já salvo => usa o existente (usuário só editou os modelos)
       const existing = getSettings().llm ?? {}
       const newToken = input.token?.trim()
       const effectiveToken = newToken || decryptSecret(existing.encToken) || ''
+      const newSwellToken = input.swellToken?.trim()
+      const effectiveSwellToken = newSwellToken || decryptSecret(existing.encSwellToken) || ''
+      const swellUrl = input.swellUrl?.trim() || existing.swellUrl
       const result = await validateLlmConfig({
         token: effectiveToken,
         modelPrimary: input.modelPrimary,
-        modelReviewer: input.modelReviewer
+        modelReviewer: input.modelReviewer,
+        swellUrl,
+        swellToken: effectiveSwellToken
       })
       if (!result.ok) return result
       setSettings({
         llm: {
           encToken: newToken ? encryptSecret(newToken) : existing.encToken,
           modelPrimary: input.modelPrimary.trim(),
-          modelReviewer: input.modelReviewer.trim()
+          modelReviewer: input.modelReviewer.trim(),
+          swellUrl,
+          encSwellToken: newSwellToken ? encryptSecret(newSwellToken) : existing.encSwellToken
         }
       })
       return result

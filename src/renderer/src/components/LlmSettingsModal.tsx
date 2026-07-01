@@ -15,6 +15,8 @@ interface CuratedEntry {
   half?: boolean  // .5 estrela extra
 }
 
+const SWELL_MODEL_ID = 'swell:devin'
+
 const CURATED: CuratedEntry[] = [
   { id: 'google/gemini-2.5-flash',               display: 'Gemini 2.5 Flash',      stars: 4 },
   { id: 'anthropic/claude-haiku-4-5',            display: 'Claude Haiku 4.5',       stars: 4 },
@@ -25,6 +27,7 @@ const CURATED: CuratedEntry[] = [
   { id: 'openai/gpt-4o-mini',                    display: 'GPT-4o Mini',            stars: 3 },
   { id: 'meta-llama/llama-4-maverick',           display: 'Llama 4 Maverick',       stars: 3 },
   { id: 'mistralai/mistral-nemo',                display: 'Mistral Nemo',           stars: 3 },
+  { id: SWELL_MODEL_ID,                          display: 'Devin (swell, local)',   stars: 0 },
 ]
 
 function stars(n: number, half?: boolean): string {
@@ -106,7 +109,9 @@ function ModelSelect({ placeholder, value, onChange, priceMap, loading }: ModelS
                 <div className="llm-combo-row">
                   <span className="llm-combo-name">{m.display}</span>
                   <span className="llm-sel-stars-sm">{stars(m.stars, m.half)}</span>
-                  {price ? (
+                  {m.id === SWELL_MODEL_ID ? (
+                    <span className="llm-combo-price">local</span>
+                  ) : price ? (
                     <span className="llm-combo-price">
                       {formatPrice(price.promptPrice)} in · {formatPrice(price.completionPrice)} out
                     </span>
@@ -134,6 +139,9 @@ export default function LlmSettingsModal({ onClose }: Props): JSX.Element {
   const [hasToken, setHasToken] = useState(false)
   const [modelPrimary, setModelPrimary] = useState('')
   const [modelReviewer, setModelReviewer] = useState('')
+  const [swellUrl, setSwellUrl] = useState('')
+  const [swellToken, setSwellToken] = useState('')
+  const [hasSwellToken, setHasSwellToken] = useState(false)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ ok: boolean; lines: string[] } | null>(null)
   const [priceMap, setPriceMap] = useState<Map<string, ModelOption>>(new Map())
@@ -159,6 +167,8 @@ export default function LlmSettingsModal({ onClose }: Props): JSX.Element {
       setHasToken(cfg.hasToken)
       setModelPrimary(cfg.modelPrimary)
       setModelReviewer(cfg.modelReviewer)
+      setHasSwellToken(cfg.hasSwellToken)
+      setSwellUrl(cfg.swellUrl)
       if (cfg.hasToken) void fetchPrices()
     })()
   }, [])
@@ -177,7 +187,9 @@ export default function LlmSettingsModal({ onClose }: Props): JSX.Element {
       const res = (await window.api.llmSaveConfig({
         token: token.trim(),
         modelPrimary: modelPrimary.trim(),
-        modelReviewer: modelReviewer.trim()
+        modelReviewer: modelReviewer.trim(),
+        swellUrl: swellUrl.trim(),
+        swellToken: swellToken.trim()
       })) as { ok: boolean; errors: string[] }
       if (res.ok) {
         setMsg({ ok: true, lines: ['✓ Configuração válida e salva'] })
@@ -223,6 +235,31 @@ export default function LlmSettingsModal({ onClose }: Props): JSX.Element {
           priceMap={priceMap}
           loading={loadingPrices}
         />
+
+        {(modelPrimary === SWELL_MODEL_ID || modelReviewer === SWELL_MODEL_ID) && (
+          <>
+            <p className="modal-help">
+              swell/devin — wrapper local para o Devin CLI. Sem custo/tokens reportados; chamadas
+              podem levar minutos.
+            </p>
+            <input
+              className="modal-input"
+              type="text"
+              placeholder="URL do swell (ex.: http://192.168.1.22:9890)"
+              value={swellUrl}
+              onChange={(e) => setSwellUrl(e.target.value)}
+            />
+            <input
+              className="modal-input"
+              type="password"
+              placeholder={
+                hasSwellToken ? 'Token do swell salvo — deixe em branco para manter' : 'Token do swell (X-API-Key)'
+              }
+              value={swellToken}
+              onChange={(e) => setSwellToken(e.target.value)}
+            />
+          </>
+        )}
 
         {msg ? (
           <div className={`test-msg ${msg.ok ? 'ok' : 'err'}`} style={{ display: 'block', marginTop: 8 }}>

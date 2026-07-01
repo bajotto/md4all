@@ -94,6 +94,8 @@ export interface LlmConfigView {
   hasToken: boolean
   modelPrimary: string
   modelReviewer: string
+  hasSwellToken: boolean
+  swellUrl: string
 }
 
 export type ProposedStatus = 'created' | 'updated' | 'unchanged' | 'removed'
