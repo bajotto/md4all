@@ -567,38 +567,60 @@ export const useStore = create<State>((set, get) => ({
   setSearchMode: (mode) => set({ searchMode: mode }),
 
   runAiSearch: async (query) => {
-    const { active, vaults } = get()
-    const vaultId = active?.vaultId ?? vaults[0]?.id
+    const { vaults } = get()
     set({ aiQuery: query })
-    if (!query.trim() || !vaultId) {
+    if (!query.trim() || vaults.length === 0) {
       set({ aiResults: [], aiSearching: false, aiUsage: null, aiError: null })
       return
     }
     set({ aiSearching: true, aiError: null, aiResults: [], aiUsage: null })
-    try {
-      const res = (await api.aiSearch(vaultId, query)) as {
+    // busca em TODOS os vaults (igual à busca literal) — não só o vault ativo
+    const settled = await Promise.allSettled(
+      vaults.map((v) =>
+        (
+          api.aiSearch(v.id, query) as Promise<{
+            results: Array<{ path: string; summary: string; score: number }>
+            usage: LlmUsage
+          }>
+        ).then((res) => ({ vaultId: v.id, vaultName: v.name, ...res }))
+      )
+    )
+    // descarta resultado se o usuário mudou a query enquanto a busca corria
+    if (get().aiQuery !== query) {
+      set({ aiSearching: false })
+      return
+    }
+    const ok = settled.filter(
+      (r): r is PromiseFulfilledResult<{
+        vaultId: string
+        vaultName: string
         results: Array<{ path: string; summary: string; score: number }>
         usage: LlmUsage
-      }
-      // descarta resultado se o usuário mudou a query enquanto a busca corria
-      if (get().aiQuery !== query) {
-        set({ aiSearching: false })
-        return
-      }
-      const vaultName = vaults.find((v) => v.id === vaultId)?.name ?? ''
-      const results: AiHit[] = res.results.map((r) => ({ ...r, vaultId, vaultName }))
-      set({ aiResults: results, aiUsage: res.usage, aiSearching: false })
-    } catch (err) {
-      // idem: não reporta erro de uma busca já obsoleta
-      if (get().aiQuery !== query) {
-        set({ aiSearching: false })
-        return
-      }
+      }> => r.status === 'fulfilled'
+    )
+    if (ok.length === 0) {
+      const firstErr = settled.find(
+        (r): r is PromiseRejectedResult => r.status === 'rejected'
+      )?.reason
       set({
         aiSearching: false,
-        aiError: err instanceof Error ? err.message : String(err)
+        aiError: firstErr instanceof Error ? firstErr.message : String(firstErr)
       })
+      return
     }
+    const results: AiHit[] = ok
+      .flatMap((r) => r.value.results.map((h) => ({ ...h, vaultId: r.value.vaultId, vaultName: r.value.vaultName })))
+      .sort((a, b) => b.score - a.score)
+    const usage = ok.reduce(
+      (acc, r) => ({
+        promptTokens: acc.promptTokens + r.value.usage.promptTokens,
+        completionTokens: acc.completionTokens + r.value.usage.completionTokens,
+        cost: acc.cost + r.value.usage.cost,
+        calls: acc.calls + r.value.usage.calls
+      }),
+      { promptTokens: 0, completionTokens: 0, cost: 0, calls: 0 }
+    )
+    set({ aiResults: results, aiUsage: usage, aiSearching: false })
   },
 
   clearAiSearch: () =>
