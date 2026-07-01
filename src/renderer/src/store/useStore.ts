@@ -589,6 +589,11 @@ export const useStore = create<State>((set, get) => ({
       const results: AiHit[] = res.results.map((r) => ({ ...r, vaultId, vaultName }))
       set({ aiResults: results, aiUsage: res.usage, aiSearching: false })
     } catch (err) {
+      // idem: não reporta erro de uma busca já obsoleta
+      if (get().aiQuery !== query) {
+        set({ aiSearching: false })
+        return
+      }
       set({
         aiSearching: false,
         aiError: err instanceof Error ? err.message : String(err)

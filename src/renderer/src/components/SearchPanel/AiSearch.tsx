@@ -50,12 +50,17 @@ export default function AiSearch({ query }: Props): JSX.Element {
     return off
   }, [])
 
+  // limpa a mensagem de progresso da busca anterior assim que uma nova começa
+  // (cobre tanto o clique em "Buscar" quanto o Enter disparado no SearchPanel)
+  useEffect(() => {
+    if (searching) setProgress(null)
+  }, [searching])
+
   const configured = !!cfg?.hasToken && !!cfg?.modelPrimary
   const canSearch = configured && vaults.length > 0 && !!query.trim() && !searching
 
   const submit = (): void => {
     if (!canSearch) return
-    setProgress(null)
     void runAiSearch(query)
   }
 
