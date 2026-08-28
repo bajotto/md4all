@@ -245,7 +245,7 @@ export default function LlmSettingsModal({ onClose }: Props): JSX.Element {
             <input
               className="modal-input"
               type="text"
-              placeholder="URL do swell (ex.: http://192.168.1.22:9890)"
+              placeholder="URL do swell (ex.: http://0.0.0.0:9890)"
               value={swellUrl}
               onChange={(e) => setSwellUrl(e.target.value)}
             />

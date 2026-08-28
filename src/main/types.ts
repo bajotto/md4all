@@ -38,7 +38,7 @@ export interface LlmConfig {
   encToken?: string // token OpenRouter cifrado (safeStorage / base64)
   modelPrimary?: string // modelo gerador/analista (ex.: anthropic/claude-3.5-sonnet, ou 'swell:devin')
   modelReviewer?: string // 2ª LLM, revisão de fallback
-  swellUrl?: string // URL base do serviço swell/devin local (ex.: http://192.168.1.22:9890)
+  swellUrl?: string // URL base do serviço swell/devin local (ex.: http://0.0.0.0:9890)
   encSwellToken?: string // token do swell/devin cifrado (header X-API-Key)
 }
 

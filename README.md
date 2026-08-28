@@ -3,6 +3,33 @@
 Editor Markdown WYSIWYG completo para desktop (Electron), no estilo Obsidian/Typora.
 Grava em qualquer pasta configurável — **disco local, iCloud Drive ou share SMB montado**.
 
+## Instalação
+
+### macOS
+
+O app é assinado ad-hoc (sem Apple Developer ID / notarização), então o Gatekeeper
+bloqueia o download com "damaged and can't be opened". O instalador abaixo baixa o
+DMG da release mais recente, copia para `/Applications` e remove a quarentena
+automaticamente — **sem precisar rodar `xattr -cr` manualmente**:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/bajotto/md4all/main/scripts/install-mac.sh | bash
+```
+
+Para uma versão específica:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/bajotto/md4all/main/scripts/install-mac.sh | bash -s -- v0.11.5
+```
+
+> Alternativa manual: baixe o `.dmg` em [Releases](https://github.com/bajotto/md4all/releases),
+> copie o app para `/Applications` e rode `xattr -cr /Applications/md4all.app`.
+
+### Linux / Windows
+
+Baixe o instalador em [Releases](https://github.com/bajotto/md4all/releases)
+(`.AppImage`/`.deb` para Linux, `.exe` para Windows).
+
 ## Recursos
 
 - **WYSIWYG inline** (Milkdown Crepe): a sintaxe é escondida e o conteúdo renderiza no lugar.

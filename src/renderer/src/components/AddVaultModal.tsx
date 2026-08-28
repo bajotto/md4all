@@ -135,7 +135,7 @@ export default function AddVaultModal({ onClose }: Props): JSX.Element {
           <>
             <input className="modal-input" placeholder="Nome (opcional)" value={name} onChange={(e) => setName(e.target.value)} />
             <div className="field-row">
-              <input className="modal-input flex2" placeholder="Host (ex.: 34.73.89.87)" value={host} onChange={(e) => setHost(e.target.value)} />
+              <input className="modal-input flex2" placeholder="Host (ex.: 0.0.0.0)" value={host} onChange={(e) => setHost(e.target.value)} />
               <input className="modal-input flex1" placeholder="Porta" value={port} onChange={(e) => setPort(e.target.value)} />
             </div>
             <input className="modal-input" placeholder="Usuário" value={username} onChange={(e) => setUsername(e.target.value)} />
