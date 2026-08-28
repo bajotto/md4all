@@ -13,6 +13,16 @@ import { pkmTokensPlugin } from '../../editor/pkmTokens'
 import { colorPlugins } from '../../editor/colorMark'
 import type { SearchController } from '../../editor/search'
 
+// link markdown comum ([texto](caminho.md)) apontando para outro arquivo do
+// vault: sem esquema (http:, mailto:, md4all-asset:...) e terminando em .md
+const LINK_SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i
+const MD_LINK_RE = /\.(md|markdown|mdown|mkd)(#.*)?$/i
+
+function isInternalMdLink(href: string): boolean {
+  if (!href || LINK_SCHEME_RE.test(href) || href.startsWith('//')) return false
+  return MD_LINK_RE.test(href)
+}
+
 /** API imperativa exposta pelo editor para a toolbar de formatação e busca. */
 export interface EditorApi {
   // dispara um comando Milkdown (ex.: toggleStrongCommand.key) com payload opcional
@@ -32,6 +42,8 @@ interface Props {
   // clique em [[wikilink]] e #tag (PKM)
   onWikilink?: (target: string) => void
   onTag?: (tag: string) => void
+  // clique em link markdown comum apontando para outra nota do vault
+  onLinkClick?: (href: string) => void
 }
 
 /**
@@ -45,7 +57,8 @@ export default function MilkdownCrepe({
   onChange,
   apiRef,
   onWikilink,
-  onTag
+  onTag,
+  onLinkClick
 }: Props): JSX.Element {
   const hostRef = useRef<HTMLDivElement>(null)
   const onChangeRef = useRef(onChange)
@@ -54,18 +67,29 @@ export default function MilkdownCrepe({
   onWikilinkRef.current = onWikilink
   const onTagRef = useRef(onTag)
   onTagRef.current = onTag
+  const onLinkClickRef = useRef(onLinkClick)
+  onLinkClickRef.current = onLinkClick
 
   const handleHostClick = (e: React.MouseEvent<HTMLDivElement>): void => {
     const el = (e.target as HTMLElement).closest('[data-target],[data-tag]') as HTMLElement | null
-    if (!el) return
-    const target = el.getAttribute('data-target')
-    const tag = el.getAttribute('data-tag')
-    if (target != null) {
+    if (el) {
+      const target = el.getAttribute('data-target')
+      const tag = el.getAttribute('data-tag')
+      if (target != null) {
+        e.preventDefault()
+        onWikilinkRef.current?.(target)
+      } else if (tag != null) {
+        e.preventDefault()
+        onTagRef.current?.(tag)
+      }
+      return
+    }
+    const anchor = (e.target as HTMLElement).closest('a[href]') as HTMLAnchorElement | null
+    if (!anchor) return
+    const href = anchor.getAttribute('href') ?? ''
+    if (isInternalMdLink(href)) {
       e.preventDefault()
-      onWikilinkRef.current?.(target)
-    } else if (tag != null) {
-      e.preventDefault()
-      onTagRef.current?.(tag)
+      onLinkClickRef.current?.(href)
     }
   }
 

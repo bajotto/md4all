@@ -23,6 +23,7 @@ export default function Editor(): JSX.Element | null {
   const outlineOpen = useStore((s) => s.outlineOpen)
   const backlinks = useStore((s) => s.backlinks)
   const openWikilink = useStore((s) => s.openWikilink)
+  const openRelativeLink = useStore((s) => s.openRelativeLink)
   const filterByTag = useStore((s) => s.filterByTag)
   const openFile = useStore((s) => s.openFile)
   const revealTarget = useStore((s) => s.revealTarget)
@@ -193,6 +194,7 @@ export default function Editor(): JSX.Element | null {
               apiRef={editorApi}
               onWikilink={(t) => void openWikilink(t)}
               onTag={(t) => void filterByTag(t)}
+              onLinkClick={(href) => void openRelativeLink(href)}
             />
           ) : (
             <CodeMirrorSource

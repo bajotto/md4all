@@ -133,6 +133,7 @@ interface State {
   // PKM
   loadBacklinks: () => Promise<void>
   openWikilink: (target: string) => Promise<void>
+  openRelativeLink: (href: string) => Promise<void>
   filterByTag: (tag: string) => Promise<void>
   clearTagFilter: () => void
   loadTags: () => Promise<TagInfo[]>
@@ -661,6 +662,30 @@ export const useStore = create<State>((set, get) => ({
       const resolved = (await api.indexResolve(active.vaultId, target)) as string | null
       if (resolved) await get().openFile(active.vaultId, resolved)
       else await api.showError(`Nota não encontrada: [[${target}]]`)
+    } catch (err) {
+      await api.showError(err instanceof Error ? err.message : String(err))
+    }
+  },
+
+  // clique em link markdown comum ([texto](outro.md)) apontando para outra
+  // nota do vault — resolve o caminho relativo ao arquivo atual e abre na aba,
+  // em vez de deixar o Electron tentar navegar/abrir no app padrão do SO
+  openRelativeLink: async (href) => {
+    const { active } = get()
+    if (!active) return
+    const [rawPath] = href.split('#')
+    if (!rawPath) return
+    try {
+      const decoded = decodeURI(rawPath)
+      const dir = active.path.includes('/') ? active.path.slice(0, active.path.lastIndexOf('/')) : ''
+      const baseParts = dir ? dir.split('/') : []
+      const stack = [...baseParts]
+      for (const part of decoded.split('/')) {
+        if (part === '' || part === '.') continue
+        if (part === '..') stack.pop()
+        else stack.push(part)
+      }
+      await get().openFile(active.vaultId, stack.join('/'))
     } catch (err) {
       await api.showError(err instanceof Error ? err.message : String(err))
     }
