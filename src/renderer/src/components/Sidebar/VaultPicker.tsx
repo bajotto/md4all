@@ -9,8 +9,18 @@ export default function VaultPicker(): JSX.Element {
   const vaults = useStore((s) => s.vaults)
   const toggleTheme = useStore((s) => s.toggleTheme)
   const setLlmSettingsOpen = useStore((s) => s.setLlmSettingsOpen)
+  const llmConfigured = useStore((s) => s.llmConfigured)
   const [adding, setAdding] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
+
+  // 🤖 exige LLM configurada: sem chave, abre o modal ⚙ (onboarding) em vez de analisar
+  const onAnalyze = (): void => {
+    if (!llmConfigured) {
+      setLlmSettingsOpen(true)
+      return
+    }
+    setAnalyzing(true)
+  }
 
   return (
     <div className="vault-actions">
@@ -21,9 +31,9 @@ export default function VaultPicker(): JSX.Element {
       </button>
       <button
         className="icon-btn"
-        title="Analisar documentação com LLM"
+        title={llmConfigured ? 'Analisar documentação com LLM' : 'Configure sua chave OpenRouter (⚙)'}
         disabled={vaults.length === 0}
-        onClick={() => setAnalyzing(true)}
+        onClick={onAnalyze}
       >
         🤖
       </button>

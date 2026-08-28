@@ -15,6 +15,8 @@ export default function SearchPanel(): JSX.Element | null {
   const clearAiSearch = useStore((s) => s.clearAiSearch)
   const aiSearching = useStore((s) => s.aiSearching)
   const searchQuery = useStore((s) => s.searchQuery)
+  const llmConfigured = useStore((s) => s.llmConfigured)
+  const setLlmSettingsOpen = useStore((s) => s.setLlmSettingsOpen)
 
   const [query, setQuery] = useState(searchQuery)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -42,6 +44,15 @@ export default function SearchPanel(): JSX.Element | null {
 
   if (!open) return null
 
+  // Híbrida exige LLM configurada: sem chave, abre o modal ⚙ (onboarding) em vez de trocar modo
+  const onHibrida = (): void => {
+    if (!llmConfigured) {
+      setLlmSettingsOpen(true)
+      return
+    }
+    setMode('hibrida')
+  }
+
   return (
     <aside className="search-drawer">
       <div className="search-drawer-head">
@@ -54,7 +65,8 @@ export default function SearchPanel(): JSX.Element | null {
           </button>
           <button
             className={mode === 'hibrida' ? 'active' : ''}
-            onClick={() => setMode('hibrida')}
+            title={llmConfigured ? 'Busca híbrida (literal + AI)' : 'Configure sua chave OpenRouter (⚙)'}
+            onClick={onHibrida}
           >
             Híbrida
           </button>

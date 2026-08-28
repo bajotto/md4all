@@ -68,10 +68,16 @@ button {
 }
 
 .sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 12px 14px;
   font-weight: 600;
   font-size: 15px;
   border-bottom: 1px solid var(--border);
+}
+.sidebar-wordmark {
+  letter-spacing: -0.3px;
 }
 
 .sidebar-empty,

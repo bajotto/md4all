@@ -80,6 +80,10 @@ interface State {
   // modal de configuração da LLM (compartilhado p/ abrir a partir do painel AI)
   llmSettingsOpen: boolean
 
+  // true quando token + 2 modelos estão configurados (fonte da verdade p/ bloquear UI de LLM)
+  llmConfigured: boolean
+  refreshLlmConfigured: () => Promise<void>
+
   // PKM (índice: wikilinks / tags / backlinks)
   backlinks: BacklinkRef[]
   tagFilter: { tag: string; notes: NoteRef[] } | null
@@ -173,6 +177,7 @@ export const useStore = create<State>((set, get) => ({
   aiError: null,
   revealTarget: null,
   llmSettingsOpen: false,
+  llmConfigured: false,
   backlinks: [],
   tagFilter: null,
 
@@ -203,6 +208,10 @@ export const useStore = create<State>((set, get) => ({
       }
     }
     set({ expanded })
+    // onboarding: se a LLM não estiver configurada, abre o modal ⚙ automaticamente
+    // (cada usuário precisa adicionar sua própria chave OpenRouter — nada embarcado)
+    await get().refreshLlmConfigured()
+    if (!get().llmConfigured) set({ llmSettingsOpen: true })
   },
 
   loadTree: async (vaultId) => {
@@ -637,7 +646,25 @@ export const useStore = create<State>((set, get) => ({
 
   clearReveal: () => set({ revealTarget: null }),
 
-  setLlmSettingsOpen: (open) => set({ llmSettingsOpen: open }),
+  setLlmSettingsOpen: (open) => {
+    set({ llmSettingsOpen: open })
+    // ao fechar o modal, recarrega o estado de "LLM configurada" (usuário pode ter salvo chave/modelos)
+    if (!open) void get().refreshLlmConfigured()
+  },
+
+  // consulta o main (llm:getConfig) e atualiza llmConfigured — fonte da verdade p/ bloquear UI de LLM
+  refreshLlmConfigured: async () => {
+    try {
+      const cfg = (await api.llmGetConfig()) as {
+        hasToken: boolean
+        modelPrimary: string
+        modelReviewer: string
+      }
+      set({ llmConfigured: !!cfg.hasToken && !!cfg.modelPrimary && !!cfg.modelReviewer })
+    } catch {
+      set({ llmConfigured: false })
+    }
+  },
 
   loadBacklinks: async () => {
     const { active } = get()
