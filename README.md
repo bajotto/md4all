@@ -13,21 +13,21 @@ DMG from the latest release, copies it to `/Applications` and removes the quaran
 automatically — **no need to run `xattr -cr` manually**:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/bajatto/md4all/main/scripts/install-mac.sh | bash
+curl -fsSL https://raw.githubusercontent.com/bajotto/md4all/main/scripts/install-mac.sh | bash
 ```
 
 For a specific version:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/bajatto/md4all/main/scripts/install-mac.sh | bash -s -- v0.11.5
+curl -fsSL https://raw.githubusercontent.com/bajotto/md4all/main/scripts/install-mac.sh | bash -s -- v0.11.5
 ```
 
-> Manual alternative: download the `.dmg` from [Releases](https://github.com/bajatto/md4all/releases),
+> Manual alternative: download the `.dmg` from [Releases](https://github.com/bajotto/md4all/releases),
 > copy the app to `/Applications` and run `xattr -cr /Applications/md4all.app`.
 
 ### Linux / Windows
 
-Download the installer from [Releases](https://github.com/bajatto/md4all/releases)
+Download the installer from [Releases](https://github.com/bajotto/md4all/releases)
 (`.AppImage`/`.deb` for Linux, `.exe` for Windows).
 
 ## Features
