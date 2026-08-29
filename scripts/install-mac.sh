@@ -111,12 +111,15 @@ ok "Download complete: $(du -h "${DMG_TEMP}" | cut -f1)"
 
 # --- Mount the DMG -----------------------------------------------------------
 log "Mounting DMG..."
-# hdiutil attach prints lines; the last column is the mount point.
-# /dev/diskNsN  Apple_HFS   /Volumes/md4all 0.11.5
-MOUNT_OUTPUT="$(hdiutil attach "${DMG_TEMP}" -nobrowse -quiet \
+# -quiet suppresses hdiutil's plain-text summary table entirely (nothing to
+# parse), so we ask for -plist output instead: a stable XML format with an
+# explicit <key>mount-point</key> entry we can grep for reliably.
+MOUNT_PLIST="$(hdiutil attach "${DMG_TEMP}" -nobrowse -plist \
   || die "Failed to mount the DMG.")"
-# get the last field (mount point) of the last non-empty line
-MOUNT_POINT="$(printf '%s\n' "${MOUNT_OUTPUT}" | awk 'NF{last=$NF} END{print last}')"
+MOUNT_POINT="$(printf '%s\n' "${MOUNT_PLIST}" \
+  | grep -A1 '<key>mount-point</key>' \
+  | sed -n 's/.*<string>\(.*\)<\/string>.*/\1/p' \
+  | head -n1)"
 [ -n "${MOUNT_POINT}" ] && [ -d "${MOUNT_POINT}" ] \
   || die "Could not determine the DMG mount point."
 ok "Mounted at: ${MOUNT_POINT}"
