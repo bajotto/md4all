@@ -1,4 +1,5 @@
 import { app, BrowserWindow, protocol, net } from 'electron'
+import { execFileSync } from 'child_process'
 import { existsSync } from 'fs'
 import { join } from 'path'
 import { pathToFileURL } from 'url'
@@ -23,7 +24,27 @@ protocol.registerSchemesAsPrivileged([
 // real GPU. Software rasterization still works (we only disable the GPU path).
 function isRemoteLinuxSession(): boolean {
   if (process.platform !== 'linux') return false
-  // xrdp sets XDG_SESSION_TYPE=xrdp-x11 / SESSION_TYPE=xrdp.
+
+  // Most reliable signal: systemd-logind marks the session Remote=yes for
+  // any session established via a remote login method (xrdp, ssh, ...),
+  // regardless of what XDG_SESSION_TYPE the display manager script reports
+  // (e.g. Ubuntu's xrdp startwm.sh hardcodes XDG_SESSION_TYPE=x11, which
+  // looks identical to a real local desktop session).
+  const sessionId = process.env.XDG_SESSION_ID
+  if (sessionId) {
+    try {
+      const out = execFileSync('loginctl', ['show-session', sessionId, '-p', 'Remote', '--value'], {
+        timeout: 2000,
+        encoding: 'utf8'
+      }).trim()
+      if (out === 'yes') return true
+      if (out === 'no') return false
+    } catch {
+      // loginctl unavailable or session not tracked by logind — fall through.
+    }
+  }
+
+  // xrdp sets XDG_SESSION_TYPE=xrdp-x11 / SESSION_TYPE=xrdp on some distros.
   const sessionType = (process.env.XDG_SESSION_TYPE ?? process.env.SESSION_TYPE ?? '').toLowerCase()
   if (sessionType.includes('xrdp')) return true
   // No DRI render node => no usable GPU in this session (covers VNC/headless).
