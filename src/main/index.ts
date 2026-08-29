@@ -1,4 +1,5 @@
 import { app, BrowserWindow, protocol, net } from 'electron'
+import { existsSync } from 'fs'
 import { join } from 'path'
 import { pathToFileURL } from 'url'
 import { registerIpc } from './ipc'
@@ -14,6 +15,25 @@ protocol.registerSchemesAsPrivileged([
     privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true }
   }
 ])
+
+// On a remote/headless Linux session (xrdp, VNC, containers without a GPU)
+// Electron's GPU compositor cannot produce a first frame, so the window stays
+// hidden forever ("installs but doesn't open"). Disable hardware acceleration
+// in that case; it has no effect on mac/win or a normal Linux desktop with a
+// real GPU. Software rasterization still works (we only disable the GPU path).
+function isRemoteLinuxSession(): boolean {
+  if (process.platform !== 'linux') return false
+  // xrdp sets XDG_SESSION_TYPE=xrdp-x11 / SESSION_TYPE=xrdp.
+  const sessionType = (process.env.XDG_SESSION_TYPE ?? process.env.SESSION_TYPE ?? '').toLowerCase()
+  if (sessionType.includes('xrdp')) return true
+  // No DRI render node => no usable GPU in this session (covers VNC/headless).
+  return !existsSync('/dev/dri/renderD128')
+}
+
+if (isRemoteLinuxSession()) {
+  app.disableHardwareAcceleration()
+  app.commandLine.appendSwitch('disable-gpu')
+}
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -33,7 +53,16 @@ function createWindow(): void {
     }
   })
 
-  win.on('ready-to-show', () => win.show())
+  // Safety net: if ready-to-show never fires (e.g. GPU compositor stall on a
+  // remote session), show the window anyway so the app never appears "dead".
+  const showTimer = setTimeout(() => {
+    if (!win.isDestroyed() && !win.isVisible()) win.show()
+  }, 3000)
+
+  win.once('ready-to-show', () => {
+    clearTimeout(showTimer)
+    win.show()
+  })
 
   if (process.env.ELECTRON_RENDERER_URL) {
     void win.loadURL(process.env.ELECTRON_RENDERER_URL)
