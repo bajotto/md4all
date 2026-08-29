@@ -8,7 +8,7 @@ Complete project context to prevent hallucination between sessions.
 Supports local vaults, iCloud/SMB and remote SSH/SFTP.
 
 - `package.json` → current version is always the source of truth
-- Repository: `https://github.com/bajatto/md4all`
+- Repository: `https://github.com/bajotto/md4all`
 - Code/comment language: **English**
 
 ---
