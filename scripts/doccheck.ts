@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 /**
- * doccheck — verificação determinística de documentação (sem LLM, sem custo).
+ * doccheck — deterministic documentation verification (no LLM, no cost).
  *
- * Detecta REFERÊNCIAS QUEBRADAS na documentação: docs que apontam para
- * arquivos (ou `arquivo:símbolo`) que não existem mais no repositório.
- * Pensado para rodar em pre-commit / pre-push localmente — nível grátis.
+ * Detects BROKEN REFERENCES in documentation: docs that point to
+ * files (or `file:symbol`) that no longer exist in the repository.
+ * Designed to run in pre-commit / pre-push locally — free tier.
  *
- * O nível LLM (auditoria completa) vive no app; esta CLI é o gatekeeper barato.
+ * The LLM tier (full audit) lives in the app; this CLI is the cheap gatekeeper.
  *
- * Uso: node doccheck.mjs [raiz]   (raiz default: cwd)   [--json]
- * Sai com código 1 se houver referências quebradas.
+ * Usage: node doccheck.mjs [root]   (root default: cwd)   [--json]
+ * Exits with code 1 if there are broken references.
  */
 import { promises as fs } from 'fs'
 import path from 'path'
@@ -22,7 +22,7 @@ const IGNORED = new Set(['.git', 'node_modules', 'dist', 'out', 'coverage', '.ca
 interface Broken {
   doc: string
   ref: string
-  reason: 'arquivo inexistente' | 'símbolo ausente'
+  reason: 'file not found' | 'symbol missing'
 }
 
 async function walk(root: string): Promise<string[]> {
@@ -64,18 +64,18 @@ async function main(): Promise<void> {
     }
     for (const ref of extractRefs(content)) {
       const { file, symbol } = normRef(ref)
-      // resolve relativo à raiz (refs costumam ser repo-relative)
+      // resolve relative to root (refs are usually repo-relative)
       const rel = file.split('/').filter((s) => s !== '.').join('/')
       if (!fileSet.has(rel)) {
-        broken.push({ doc, ref, reason: 'arquivo inexistente' })
+        broken.push({ doc, ref, reason: 'file not found' })
         continue
       }
       if (symbol) {
         try {
           const target = await fs.readFile(path.join(root, rel), 'utf-8')
-          if (!anchorMatches(target, { symbol })) broken.push({ doc, ref, reason: 'símbolo ausente' })
+          if (!anchorMatches(target, { symbol })) broken.push({ doc, ref, reason: 'symbol missing' })
         } catch {
-          /* ignora */
+          /* ignore */
         }
       }
     }
@@ -84,11 +84,11 @@ async function main(): Promise<void> {
   if (json) {
     console.log(JSON.stringify({ root, docs: docs.length, broken }, null, 2))
   } else {
-    console.log(`doccheck: ${docs.length} doc(s) verificada(s) em ${root}`)
+    console.log(`doccheck: ${docs.length} doc(s) checked in ${root}`)
     if (broken.length === 0) {
-      console.log('✓ nenhuma referência quebrada')
+      console.log('✓ no broken references')
     } else {
-      console.log(`✗ ${broken.length} referência(s) quebrada(s):`)
+      console.log(`✗ ${broken.length} broken reference(s):`)
       for (const b of broken) console.log(`  - ${b.doc} → «${b.ref}» (${b.reason})`)
     }
   }

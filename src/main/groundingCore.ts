@@ -1,7 +1,7 @@
-// Lógica pura de verificação de âncoras (sem dependência de Electron/fs).
-// Mantida separada de grounding.ts para ser testável em isolamento.
+// Pure anchor verification logic (no dependency on Electron/fs).
+// Kept separate from grounding.ts to be testable in isolation.
 
-/** Normaliza whitespace para comparação tolerante (colapsa espaços/quebras). */
+/** Normalizes whitespace for tolerant comparison (collapses spaces/line breaks). */
 export function normalize(s: string): string {
   return s.replace(/\s+/g, ' ').trim().toLowerCase()
 }
@@ -12,11 +12,11 @@ export interface AnchorLike {
 }
 
 /**
- * A âncora bate com o conteúdo? Heurística agnóstica de linguagem:
- * - quote normalizado (>= 8 chars) presente, OU
- * - symbol (>= 3 chars) presente, OU
- * - quote curto (>= 4 chars) presente literalmente.
- * Quotes muito curtos são rejeitados para evitar falsos positivos.
+ * Does the anchor match the content? Language-agnostic heuristic:
+ * - normalized quote (>= 8 chars) present, OR
+ * - symbol (>= 3 chars) present, OR
+ * - short quote (>= 4 chars) present literally.
+ * Very short quotes are rejected to avoid false positives.
  */
 export function anchorMatches(content: string, anchor: AnchorLike): boolean {
   const hay = normalize(content)

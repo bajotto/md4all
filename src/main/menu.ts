@@ -5,8 +5,8 @@ function sendMenu(cmd: string): void {
   win?.webContents.send('menu:command', cmd)
 }
 
-/** Monta o menu da aplicação com papéis nativos (copiar/colar/desfazer…) e
- *  os itens de busca que abrem a barra Find/Replace no renderer. */
+/** Builds the application menu with native roles (copy/paste/undo…) and
+ *  the search items that open the Find/Replace bar in the renderer. */
 export function buildMenu(): void {
   const isMac = process.platform === 'darwin'
 
@@ -16,39 +16,39 @@ export function buildMenu(): void {
       : []),
     { role: 'fileMenu' },
     {
-      label: 'Editar',
+      label: 'Edit',
       submenu: [
-        { role: 'undo', label: 'Desfazer' },
-        { role: 'redo', label: 'Refazer' },
+        { role: 'undo', label: 'Undo' },
+        { role: 'redo', label: 'Redo' },
         { type: 'separator' },
-        { role: 'cut', label: 'Recortar' },
-        { role: 'copy', label: 'Copiar' },
-        { role: 'paste', label: 'Colar' },
-        { role: 'selectAll', label: 'Selecionar tudo' },
+        { role: 'cut', label: 'Cut' },
+        { role: 'copy', label: 'Copy' },
+        { role: 'paste', label: 'Paste' },
+        { role: 'selectAll', label: 'Select All' },
         { type: 'separator' },
         {
-          label: 'Localizar',
+          label: 'Find',
           accelerator: 'CmdOrCtrl+F',
           click: () => sendMenu('find')
         },
         {
-          label: 'Substituir',
+          label: 'Replace',
           accelerator: isMac ? 'Alt+Cmd+F' : 'Ctrl+H',
           click: () => sendMenu('replace')
         }
       ]
     },
     {
-      label: 'Visualizar',
+      label: 'View',
       submenu: [
-        { role: 'reload', label: 'Recarregar' },
-        { role: 'toggleDevTools', label: 'Ferramentas de desenvolvedor' },
+        { role: 'reload', label: 'Reload' },
+        { role: 'toggleDevTools', label: 'Developer Tools' },
         { type: 'separator' },
-        { role: 'resetZoom', label: 'Zoom normal' },
-        { role: 'zoomIn', label: 'Aumentar zoom' },
-        { role: 'zoomOut', label: 'Diminuir zoom' },
+        { role: 'resetZoom', label: 'Actual Size' },
+        { role: 'zoomIn', label: 'Zoom In' },
+        { role: 'zoomOut', label: 'Zoom Out' },
         { type: 'separator' },
-        { role: 'togglefullscreen', label: 'Tela cheia' }
+        { role: 'togglefullscreen', label: 'Fullscreen' }
       ]
     },
     { role: 'windowMenu' }

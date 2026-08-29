@@ -38,7 +38,7 @@ function stars(n: number, half?: boolean): string {
 }
 
 function formatPrice(p: number): string {
-  if (p === 0) return 'grátis'
+  if (p === 0) return 'free'
   const pm = p * 1_000_000
   if (pm < 0.01) return `$${(pm * 1000).toFixed(2)}/B`
   return `$${pm.toFixed(2)}/M`
@@ -65,7 +65,7 @@ function ModelSelect({ placeholder, value, onChange, priceMap, loading }: ModelS
 
   const getPrice = (id: string): ModelOption | undefined => {
     if (priceMap.has(id)) return priceMap.get(id)
-    // fallback: prefixo parcial (ex.: OR adiciona sufixo de versão)
+    // fallback: partial prefix (e.g. OR adds version suffix)
     for (const [k, v] of priceMap) {
       if (k.startsWith(id) || id.startsWith(k)) return v
     }
@@ -94,7 +94,7 @@ function ModelSelect({ placeholder, value, onChange, priceMap, loading }: ModelS
         <span className="llm-sel-arrow">{open ? '▲' : '▼'}</span>
       </button>
 
-      {loading && <div className="llm-combo-loading">Buscando preços…</div>}
+      {loading && <div className="llm-combo-loading">Fetching prices…</div>}
 
       {open && (
         <ul className="llm-combo-list">
@@ -133,7 +133,7 @@ interface Props {
   onClose: () => void
 }
 
-/** Configuração da LLM (OpenRouter): token + 2 model codes, validado ao salvar. */
+/** LLM configuration (OpenRouter): token + 2 model codes, validated on save. */
 export default function LlmSettingsModal({ onClose }: Props): JSX.Element {
   const [token, setToken] = useState('')
   const [hasToken, setHasToken] = useState(false)
@@ -192,7 +192,7 @@ export default function LlmSettingsModal({ onClose }: Props): JSX.Element {
         swellToken: swellToken.trim()
       })) as { ok: boolean; errors: string[] }
       if (res.ok) {
-        setMsg({ ok: true, lines: ['✓ Configuração válida e salva'] })
+        setMsg({ ok: true, lines: ['✓ Configuration valid and saved'] })
         setTimeout(onClose, 700)
       } else {
         setMsg({ ok: false, lines: res.errors })
@@ -207,21 +207,21 @@ export default function LlmSettingsModal({ onClose }: Props): JSX.Element {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-box add-vault llm-config" onClick={(e) => e.stopPropagation()}>
-        <p className="modal-title">Configurar LLM (OpenRouter)</p>
+        <p className="modal-title">Configure LLM (OpenRouter)</p>
         <p className="modal-help">
-          Usada para analisar a documentação contra o código. A chave é guardada cifrada localmente.
+          Used to analyze documentation against code. The key is stored encrypted locally.
         </p>
 
         <input
           className="modal-input"
           type="password"
-          placeholder={hasToken ? 'Token salvo — deixe em branco para manter' : 'Token OpenRouter (sk-or-…)'}
+          placeholder={hasToken ? 'Token saved — leave blank to keep' : 'OpenRouter token (sk-or-…)'}
           value={token}
           onChange={(e) => setToken(e.target.value)}
         />
 
         <ModelSelect
-          placeholder="Modelo primário"
+          placeholder="Primary model"
           value={modelPrimary}
           onChange={setModelPrimary}
           priceMap={priceMap}
@@ -229,7 +229,7 @@ export default function LlmSettingsModal({ onClose }: Props): JSX.Element {
         />
 
         <ModelSelect
-          placeholder="Modelo revisor / fallback"
+          placeholder="Reviewer model / fallback"
           value={modelReviewer}
           onChange={setModelReviewer}
           priceMap={priceMap}
@@ -239,13 +239,13 @@ export default function LlmSettingsModal({ onClose }: Props): JSX.Element {
         {(modelPrimary === SWELL_MODEL_ID || modelReviewer === SWELL_MODEL_ID) && (
           <>
             <p className="modal-help">
-              swell/devin — wrapper local para o Devin CLI. Sem custo/tokens reportados; chamadas
-              podem levar minutos.
+              swell/devin — local wrapper for the Devin CLI. No cost/tokens reported; calls
+              may take minutes.
             </p>
             <input
               className="modal-input"
               type="text"
-              placeholder="URL do swell (ex.: http://0.0.0.0:9890)"
+              placeholder="swell URL (e.g. http://0.0.0.0:9890)"
               value={swellUrl}
               onChange={(e) => setSwellUrl(e.target.value)}
             />
@@ -253,7 +253,7 @@ export default function LlmSettingsModal({ onClose }: Props): JSX.Element {
               className="modal-input"
               type="password"
               placeholder={
-                hasSwellToken ? 'Token do swell salvo — deixe em branco para manter' : 'Token do swell (X-API-Key)'
+                hasSwellToken ? 'swell token saved — leave blank to keep' : 'swell token (X-API-Key)'
               }
               value={swellToken}
               onChange={(e) => setSwellToken(e.target.value)}
@@ -271,14 +271,14 @@ export default function LlmSettingsModal({ onClose }: Props): JSX.Element {
 
         <div className="modal-actions">
           <button className="modal-btn-cancel" onClick={onClose}>
-            Cancelar
+            Cancel
           </button>
           <button
             className="modal-btn-ok"
             disabled={busy || !modelPrimary.trim() || !modelReviewer.trim()}
             onClick={() => void save()}
           >
-            {busy ? 'Validando…' : 'Salvar'}
+            {busy ? 'Validating…' : 'Save'}
           </button>
         </div>
       </div>

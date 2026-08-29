@@ -24,7 +24,7 @@ function groupByFile(hits: SearchHit[]): Group[] {
   return [...map.values()]
 }
 
-/** Resultados da busca literal (substring), agrupados por arquivo. */
+/** Literal search results (substring), grouped by file. */
 export default function LiteralSearch(): JSX.Element {
   const results = useStore((s) => s.searchResults)
   const searching = useStore((s) => s.searching)
@@ -35,23 +35,23 @@ export default function LiteralSearch(): JSX.Element {
   const groups = useMemo(() => groupByFile(results), [results])
 
   if (!searchQuery.trim()) {
-    return <p className="search-status">Digite para buscar.</p>
+    return <p className="search-status">Type to search.</p>
   }
 
   return (
     <div className="search-results">
       {mode === 'hibrida' ? (
-        <div className="search-section-label">Correspondências literais</div>
+        <div className="search-section-label">Literal matches</div>
       ) : null}
       {searching ? (
-        <p className="search-status">Buscando…</p>
+        <p className="search-status">Searching…</p>
       ) : groups.length === 0 ? (
-        <p className="search-status">Nenhum resultado.</p>
+        <p className="search-status">No results.</p>
       ) : (
         <>
           <p className="search-status">
-            {results.length} ocorrência{results.length === 1 ? '' : 's'} em {groups.length}{' '}
-            arquivo{groups.length === 1 ? '' : 's'}
+            {results.length} occurrence{results.length === 1 ? '' : 's'} in {groups.length}{' '}
+            file{groups.length === 1 ? '' : 's'}
           </p>
           {groups.map((g) => (
             <div key={g.key} className="search-result-file">
@@ -64,7 +64,7 @@ export default function LiteralSearch(): JSX.Element {
                   key={`${hit.line}:${i}`}
                   className="search-result-row"
                   onClick={() => void revealHit(hit)}
-                  title={`Linha ${hit.line}`}
+                  title={`Line ${hit.line}`}
                 >
                   <span className="search-result-line">{hit.line}</span>
                   <span className="search-result-snippet">{hit.preview}</span>

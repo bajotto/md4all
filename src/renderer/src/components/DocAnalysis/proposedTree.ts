@@ -4,11 +4,11 @@ export interface ProposedTreeNode {
   name: string
   path: string
   isDir: boolean
-  status?: ProposedStatus // só para arquivos
+  status?: ProposedStatus // only for files
   children: ProposedTreeNode[]
 }
 
-/** Constrói uma árvore aninhada a partir da lista plana de arquivos propostos. */
+/** Builds a nested tree from the flat list of proposed files. */
 export function buildProposedTree(files: ProposedFile[]): ProposedTreeNode[] {
   const root: ProposedTreeNode = { name: '', path: '', isDir: true, children: [] }
 
@@ -48,11 +48,11 @@ function sortTree(nodes: ProposedTreeNode[]): void {
 export function statusBadge(status?: ProposedStatus): { label: string; cls: string } | null {
   switch (status) {
     case 'created':
-      return { label: 'novo', cls: 'created' }
+      return { label: 'new', cls: 'created' }
     case 'updated':
-      return { label: 'editado', cls: 'updated' }
+      return { label: 'edited', cls: 'updated' }
     case 'removed':
-      return { label: 'removido', cls: 'removed' }
+      return { label: 'removed', cls: 'removed' }
     case 'unchanged':
       return { label: '·', cls: 'unchanged' }
     default:

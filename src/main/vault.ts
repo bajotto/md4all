@@ -9,21 +9,21 @@ import type { FileNode, SftpConfig, SftpInput, Vault } from './types'
 const TEXT_EXTS = new Set(['.md', '.markdown', '.mdown', '.mkd', '.txt'])
 const IGNORED = new Set(['.git', 'node_modules', '.obsidian', '.DS_Store'])
 
-/** Extensões de código consideradas na análise doc↔código. */
+/** Code extensions considered in the doc↔code analysis. */
 export const CODE_EXTS = new Set([
   '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.py', '.go', '.rs', '.java',
   '.rb', '.php', '.c', '.h', '.cpp', '.hpp', '.cc', '.cs', '.swift', '.kt',
   '.json', '.yaml', '.yml', '.toml', '.sh', '.sql', '.vue', '.svelte'
 ])
 
-/** Pastas extras ignoradas na varredura de código (além de IGNORED). */
+/** Extra folders ignored in code scanning (in addition to IGNORED). */
 const CODE_IGNORED = new Set(['dist', 'out', 'build', 'coverage', '.next', '.cache', 'vendor', 'assets'])
 
 function shouldSkipDir(name: string): boolean {
   return IGNORED.has(name) || CODE_IGNORED.has(name) || name.startsWith('.') || name.startsWith('_backup_')
 }
 
-/** Expande `~` para o home do usuário e normaliza o caminho. */
+/** Expands `~` to the user's home and normalizes the path. */
 function expandPath(p: string): string {
   let out = p.trim()
   if (out === '~') out = os.homedir()
@@ -31,15 +31,15 @@ function expandPath(p: string): string {
   return path.resolve(out)
 }
 
-/** Caminho padrão do iCloud Drive no macOS. */
+/** Default iCloud Drive path on macOS. */
 export function suggestedIcloudPath(): string {
   return path.join(os.homedir(), 'Library', 'Mobile Documents', 'com~apple~CloudDocs')
 }
 
 export function getVault(vaultId: string): Vault {
   const vault = getSettings().vaults.find((v) => v.id === vaultId)
-  if (!vault) throw new Error(`Vault não encontrado: ${vaultId}`)
-  // vaults antigos não têm `kind` -> tratamos como local
+  if (!vault) throw new Error(`Vault not found: ${vaultId}`)
+  // old vaults don't have `kind` -> treat as local
   return { ...vault, kind: vault.kind ?? 'local' }
 }
 
@@ -48,14 +48,14 @@ export function isSftp(vault: Vault): boolean {
 }
 
 /**
- * Resolve um caminho relativo dentro de um vault LOCAL, impedindo path traversal.
+ * Resolves a relative path inside a LOCAL vault, preventing path traversal.
  */
 export function resolveInVault(vaultId: string, relPath: string): string {
   const vault = getVault(vaultId)
   const root = path.resolve(vault.path)
   const target = path.resolve(root, relPath.replace(/^[/\\]+/, ''))
   if (target !== root && !target.startsWith(root + path.sep)) {
-    throw new Error('Caminho fora do vault não permitido')
+    throw new Error('Path outside the vault is not allowed')
   }
   return target
 }
@@ -101,12 +101,12 @@ async function localListTree(vault: Vault): Promise<FileNode[]> {
 }
 
 const MD_RE = /\.(md|markdown|mdown|mkd)$/i
-/** Um diretório "tem md" se algum descendente já carregado é um arquivo markdown. */
+/** A directory "has md" if some loaded descendant is a markdown file. */
 function dirHasMd(children: FileNode[]): boolean {
   return children.some((c) => (c.isDir ? c.hasMd === true : MD_RE.test(c.path)))
 }
 
-/** Coleta plana de caminhos relativos cujos arquivos batem com `exts` (vault local). */
+/** Flat collection of relative paths whose files match `exts` (local vault). */
 async function localCollectPaths(vault: Vault, exts: Set<string>): Promise<string[]> {
   const root = path.resolve(vault.path)
   const out: string[] = []
@@ -161,17 +161,17 @@ export async function listTree(vaultId: string): Promise<FileNode[]> {
   return isSftp(vault) ? sftp.listTree(vault) : localListTree(vault)
 }
 
-/** Lista um nível (filhos imediatos) — usado para carregar a árvore SFTP sob demanda. */
+/** Lists one level (immediate children) — used to load the SFTP tree on demand. */
 export async function listDir(vaultId: string, relPath: string): Promise<FileNode[]> {
   const vault = getVault(vaultId)
   return isSftp(vault) ? sftp.listDir(vault, relPath) : localListDir(vault, relPath)
 }
 
-/** Há .md em algum descendente de `relPath`? (sondagem p/ destacar pastas na árvore SFTP) */
+/** Is there .md in some descendant of `relPath`? (probing to highlight folders in the SFTP tree) */
 export async function hasMarkdown(vaultId: string, relPath: string): Promise<boolean> {
   const vault = getVault(vaultId)
   if (isSftp(vault)) return sftp.hasMarkdown(vault, relPath)
-  // local: a árvore já carrega hasMd; fallback rápido por fs se chamado
+  // local: the tree already loads hasMd; quick fs fallback if called
   const start = resolveInVault(vaultId, relPath || '.')
   const MAX = 500
   let n = 0
@@ -201,20 +201,20 @@ export async function readFile(vaultId: string, relPath: string): Promise<string
   return fs.readFile(resolveInVault(vaultId, relPath), 'utf-8')
 }
 
-/** Lê arquivo + timestamp (para detectar mudança externa). */
+/** Reads file + timestamp (to detect external changes). */
 export async function readFileMeta(vaultId: string, relPath: string): Promise<{ content: string; modifiedAt: number }> {
   const vault = getVault(vaultId)
   const content = await readFile(vaultId, relPath)
   if (isSftp(vault)) {
-    // SFTP: usa timestamp do servidor (aproximado)
+    // SFTP: uses server timestamp (approximate)
     return { content, modifiedAt: Date.now() }
   }
-  // Local: usa mtime real do arquivo
+  // Local: uses real file mtime
   const stat = await fs.stat(resolveInVault(vaultId, relPath))
   return { content, modifiedAt: stat.mtime.getTime() }
 }
 
-/** Caminhos relativos de todos os arquivos com extensão em `exts` (local ou SFTP). */
+/** Relative paths of all files with extension in `exts` (local or SFTP). */
 export async function collectPaths(vaultId: string, exts: Set<string>): Promise<string[]> {
   const vault = getVault(vaultId)
   return isSftp(vault) ? sftp.collectPaths(vault, exts) : localCollectPaths(vault, exts)
@@ -242,7 +242,7 @@ export async function createFile(vaultId: string, relPath: string): Promise<stri
   try {
     await fs.writeFile(abs, '', { flag: 'wx' })
   } catch {
-    throw new Error('Já existe um arquivo com esse nome')
+    throw new Error('A file with that name already exists')
   }
   return relPath
 }
@@ -256,12 +256,12 @@ export async function createFolder(vaultId: string, relPath: string): Promise<st
 
 export async function rename(vaultId: string, fromRel: string, toRelPath: string): Promise<string> {
   const vault = getVault(vaultId)
-  if (!toRelPath.trim()) throw new Error('Nome não pode ser vazio')
-  if (toRelPath.includes('\0')) throw new Error('Nome contém caractere inválido (nulo)')
+  if (!toRelPath.trim()) throw new Error('Name cannot be empty')
+  if (toRelPath.includes('\0')) throw new Error('Name contains an invalid (null) character')
   if (isSftp(vault)) return sftp.rename(vault, fromRel, toRelPath)
   const from = resolveInVault(vaultId, fromRel)
   const to = resolveInVault(vaultId, toRelPath)
-  if (from === to) throw new Error('Nome igual ao atual')
+  if (from === to) throw new Error('Name is the same as the current one')
   await fs.mkdir(path.dirname(to), { recursive: true })
   await fs.rename(from, to)
   return toRelPath
@@ -295,7 +295,7 @@ export async function saveAsset(vaultId: string, fileName: string, data: Uint8Ar
   return `assets/${candidate}`
 }
 
-// ---------------- gestão de vaults ----------------
+// ---------------- vault management ----------------
 export async function addVault(name: string, vaultPath: string): Promise<Vault> {
   const abs = expandPath(vaultPath)
   let stat: import('fs').Stats
@@ -303,10 +303,10 @@ export async function addVault(name: string, vaultPath: string): Promise<Vault> 
     stat = await fs.stat(abs)
   } catch {
     throw new Error(
-      `Pasta não encontrada: ${abs}\n\nPara SMB, monte o share primeiro (Finder → Ir → Conectar ao servidor) e aponte para /Volumes/<share>. Para iCloud, use ~/Library/Mobile Documents/com~apple~CloudDocs.`
+      `Folder not found: ${abs}\n\nFor SMB, mount the share first (Finder → Go → Connect to Server) and point to /Volumes/<share>. For iCloud, use ~/Library/Mobile Documents/com~apple~CloudDocs.`
     )
   }
-  if (!stat.isDirectory()) throw new Error(`O caminho não é uma pasta: ${abs}`)
+  if (!stat.isDirectory()) throw new Error(`The path is not a folder: ${abs}`)
 
   const settings = getSettings()
   const finalName = name?.trim() || path.basename(abs) || 'vault'
@@ -315,7 +315,7 @@ export async function addVault(name: string, vaultPath: string): Promise<Vault> 
   return vault
 }
 
-/** Monta a config SFTP cifrando os segredos. */
+/** Builds the SFTP config encrypting the secrets. */
 function buildSftpConfig(input: SftpInput): SftpConfig {
   const cfg: SftpConfig = {
     host: input.host.trim(),
@@ -332,18 +332,18 @@ export async function testSftp(input: SftpInput): Promise<void> {
   await sftp.testConnection(buildSftpConfig(input), input.rootPath?.trim() || '.')
 }
 
-/** Lista um nível do FS remoto usando as credenciais do formulário (vault ainda não existe). */
+/** Lists one level of the remote FS using the form credentials (vault does not exist yet). */
 export async function browseSftp(input: SftpInput, remotePath?: string): Promise<sftp.BrowseResult> {
   return sftp.browse(buildSftpConfig(input), remotePath)
 }
 
 export async function addSftpVault(input: SftpInput): Promise<Vault> {
   const cfg = buildSftpConfig(input)
-  // valida a conexão antes de salvar
+  // validates the connection before saving
   await sftp.testConnection(cfg, input.rootPath?.trim() || '.')
   const settings = getSettings()
   const rootPath = input.rootPath?.trim() || '.'
-  // defesa contra duplicata (ex.: double-submit): se já existe vault idêntico, reusa
+  // defense against duplicates (e.g., double-submit): if an identical vault already exists, reuse it
   const dup = settings.vaults.find(
     (v) =>
       v.kind === 'sftp' &&

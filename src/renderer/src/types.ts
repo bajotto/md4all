@@ -12,7 +12,7 @@ export interface FileNode {
   path: string
   isDir: boolean
   children?: FileNode[]
-  hasMd?: boolean // diretório contém .md em algum descendente (destaque na árvore)
+  hasMd?: boolean // directory contains .md in some descendant (highlight in tree)
 }
 
 export interface SearchHit {
@@ -23,7 +23,7 @@ export interface SearchHit {
   preview: string
 }
 
-/** Resultado da busca por AI (LLM lê todos os .md e resume a relevância). */
+/** AI search result (LLM reads all .md files and summarizes relevance). */
 export interface AiHit {
   vaultId: string
   vaultName: string
@@ -32,7 +32,7 @@ export interface AiHit {
   score: number
 }
 
-/** Alvo de navegação ao clicar num resultado: revela a linha/termo no editor. */
+/** Navigation target when clicking a result: reveals the line/term in the editor. */
 export interface RevealTarget {
   vaultId: string
   path: string
@@ -65,15 +65,15 @@ export type EditorMode = 'wysiwyg' | 'source'
 
 export interface OpenTab {
   vaultId: string
-  path: string // relativo ao vault
+  path: string // relative to vault
   name: string
   content: string
   dirty: boolean
-  modifiedAt?: number // timestamp unix quando foi lido (para detectar mudança externa)
-  stale?: boolean // true se arquivo mudou no disco desde que foi lido
+  modifiedAt?: number // unix timestamp when read (to detect external changes)
+  stale?: boolean // true if file changed on disk since it was read
 }
 
-/** Dados do formulário de vault SFTP enviados ao main. */
+/** SFTP vault form data sent to main. */
 export interface SftpInput {
   name: string
   host: string
@@ -89,7 +89,7 @@ export function tabKey(vaultId: string, path: string): string {
   return `${vaultId}::${path}`
 }
 
-// ---------- LLM / análise de documentação ----------
+// ---------- LLM / documentation analysis ----------
 export interface LlmConfigView {
   hasToken: boolean
   modelPrimary: string
@@ -152,7 +152,7 @@ export interface ReviewOutcome {
   usage: LlmUsage
 }
 
-// auditoria grounded
+// grounded audit
 export interface Anchor {
   path: string
   quote: string

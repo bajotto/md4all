@@ -15,7 +15,7 @@ interface Props {
   onClose: () => void
 }
 
-/** Navegador gráfico do FS remoto (um nível por vez) para escolher a pasta raiz. */
+/** Graphical remote FS browser (one level at a time) to choose the root folder. */
 export default function RemoteDirPicker({ input, initialPath, onPick, onClose }: Props): JSX.Element {
   const [data, setData] = useState<BrowseResult | null>(null)
   const [loading, setLoading] = useState(true)
@@ -29,7 +29,7 @@ export default function RemoteDirPicker({ input, initialPath, onPick, onClose }:
       setData(r)
     } catch (err) {
       const raw = err instanceof Error ? err.message : String(err)
-      // remove o ruído do wrapper de IPC do Electron
+      // remove the noise from Electron's IPC wrapper
       setError(raw.replace(/^Error invoking remote method '[^']*':\s*(Error:\s*)?/, ''))
     } finally {
       setLoading(false)
@@ -38,7 +38,7 @@ export default function RemoteDirPicker({ input, initialPath, onPick, onClose }:
 
   useEffect(() => {
     void go(initialPath)
-    // fecha a conexão transitória ao desmontar
+    // closes the transient connection on unmount
     return () => {
       void window.api.browseSftpClose()
     }
@@ -53,14 +53,14 @@ export default function RemoteDirPicker({ input, initialPath, onPick, onClose }:
   return (
     <div className="modal-overlay" onClick={close}>
       <div className="modal-box rdir" onClick={(e) => e.stopPropagation()}>
-        <p className="modal-title">Escolher pasta raiz remota</p>
+        <p className="modal-title">Choose remote root folder</p>
 
         <div className="rdir-bar">
           <button className="inline-btn" disabled={!data?.parent || loading} onClick={() => void go(data?.parent ?? undefined)}>
-            ↑ Subir
+            ↑ Up
           </button>
           <span className="rdir-path" title={data?.path}>
-            {loading && !data ? 'conectando…' : (data?.path ?? '')}
+            {loading && !data ? 'connecting…' : (data?.path ?? '')}
           </span>
           <button className="inline-btn" disabled={loading} onClick={() => void go(data?.path)}>
             ↻
@@ -73,10 +73,10 @@ export default function RemoteDirPicker({ input, initialPath, onPick, onClose }:
               ✗ {error}
             </div>
           ) : loading ? (
-            <p className="tree-empty">Carregando…</p>
+            <p className="tree-empty">Loading…</p>
           ) : !data || data.dirs.length === 0 ? (
             <p className="tree-empty">
-              (sem subpastas{data ? ` · ${data.fileCount} arquivo(s) aqui` : ''})
+              (no subfolders{data ? ` · ${data.fileCount} file(s) here` : ''})
             </p>
           ) : (
             data.dirs.map((d) => (
@@ -90,7 +90,7 @@ export default function RemoteDirPicker({ input, initialPath, onPick, onClose }:
 
         <div className="modal-actions">
           <button className="modal-btn-cancel" onClick={close}>
-            Cancelar
+            Cancel
           </button>
           <button
             className="modal-btn-ok"
@@ -102,7 +102,7 @@ export default function RemoteDirPicker({ input, initialPath, onPick, onClose }:
               }
             }}
           >
-            Usar esta pasta
+            Use this folder
           </button>
         </div>
       </div>

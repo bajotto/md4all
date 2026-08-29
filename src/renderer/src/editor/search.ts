@@ -1,5 +1,5 @@
-// Tipos e utilidades compartilhadas de busca/substituição usados pelos dois
-// editores (WYSIWYG via ProseMirror e Código via CodeMirror).
+// Shared search/replace types and utilities used by both editors
+// (WYSIWYG via ProseMirror and Code via CodeMirror).
 
 export interface SearchOptions {
   caseSensitive: boolean
@@ -7,12 +7,12 @@ export interface SearchOptions {
 }
 
 export interface SearchOccurrence {
-  index: number // índice da ocorrência (0-based)
-  line: number // linha aproximada (1-based) ou 0 se indisponível
-  preview: string // trecho de contexto para exibir no modal
+  index: number // occurrence index (0-based)
+  line: number // approximate line (1-based) or 0 if unavailable
+  preview: string // context snippet to display in the modal
 }
 
-/** Controlador uniforme que cada editor expõe via ref. */
+/** Uniform controller that each editor exposes via ref. */
 export interface SearchController {
   setQuery: (query: string, opts: SearchOptions) => void
   count: () => number
@@ -37,21 +37,21 @@ export function buildRegex(query: string, opts: SearchOptions): RegExp {
   return new RegExp(src, flags)
 }
 
-/** Acha todas as ocorrências (offsets de caractere) num texto plano. */
+/** Finds all occurrences (character offsets) in plain text. */
 export function findMatches(text: string, query: string, opts: SearchOptions): MatchRange[] {
   if (!query) return []
   let re: RegExp
   try {
     re = buildRegex(query, opts)
   } catch {
-    return [] // regex inválida enquanto o usuário digita
+    return [] // invalid regex while the user types
   }
   const out: MatchRange[] = []
   let m: RegExpExecArray | null
   let guard = 0
   while ((m = re.exec(text)) !== null) {
     out.push({ start: m.index, end: m.index + m[0].length })
-    if (m[0].length === 0) re.lastIndex++ // evita loop infinito em match vazio
+    if (m[0].length === 0) re.lastIndex++ // avoids infinite loop on empty match
     if (++guard > 100000) break
   }
   return out

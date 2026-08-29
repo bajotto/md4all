@@ -6,8 +6,8 @@ export interface DiffLine {
 }
 
 /**
- * Diff de linhas via LCS (sem dependência externa). Suficiente para revisar
- * alterações de documentação na modal de análise.
+ * Line diff via LCS (no external dependency). Sufficient for reviewing
+ * documentation changes in the analysis modal.
  */
 export function diffLines(oldText: string, newText: string): DiffLine[] {
   const a = oldText.length ? oldText.split('\n') : []
@@ -15,7 +15,7 @@ export function diffLines(oldText: string, newText: string): DiffLine[] {
   const n = a.length
   const m = b.length
 
-  // tabela LCS
+  // LCS table
   const lcs: number[][] = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0))
   for (let i = n - 1; i >= 0; i--) {
     for (let j = m - 1; j >= 0; j--) {

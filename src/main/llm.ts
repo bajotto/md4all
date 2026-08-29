@@ -4,7 +4,7 @@ import type { LlmUsage } from './types'
 
 const BASE = 'https://openrouter.ai/api/v1'
 
-/** Sentinel usado nos campos modelPrimary/modelReviewer para rotear para o swell/devin em vez do OpenRouter. */
+/** Sentinel used in the modelPrimary/modelReviewer fields to route to swell/devin instead of OpenRouter. */
 export const SWELL_MODEL_ID = 'swell:devin'
 
 export interface ChatMessage {
@@ -24,9 +24,9 @@ export function addUsage(acc: LlmUsage, u: LlmUsage): void {
 }
 
 export interface ChatOptions {
-  token?: string // sobrepõe o token salvo (usado na validação antes de persistir)
+  token?: string // overrides the saved token (used in validation before persisting)
   temperature?: number
-  json?: boolean // pede response_format json_object
+  json?: boolean // requests response_format json_object
   maxTokens?: number
 }
 
@@ -34,52 +34,52 @@ function authHeaders(token: string): Record<string, string> {
   return {
     Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
-    // OpenRouter recomenda identificar o app
+    // OpenRouter recommends identifying the app
     'HTTP-Referer': 'https://github.com/md4all',
     'X-Title': 'md4all'
   }
 }
 
-/** Token em claro a partir das settings cifradas. */
+/** Plaintext token from the encrypted settings. */
 export function getToken(): string {
   const token = decryptSecret(getSettings().llm?.encToken)
-  if (!token) throw new Error('Configure o token do OpenRouter primeiro (⚙ na barra lateral).')
+  if (!token) throw new Error('Configure the OpenRouter token first (⚙ in the sidebar).')
   return token
 }
 
 export function getModels(): { primary: string; reviewer: string } {
   const llm = getSettings().llm ?? {}
   if (!llm.modelPrimary || !llm.modelReviewer) {
-    throw new Error('Configure os dois modelos da LLM nas configurações (⚙).')
+    throw new Error('Configure both LLM models in the settings (⚙).')
   }
   return { primary: llm.modelPrimary, reviewer: llm.modelReviewer }
 }
 
-/** URL + token em claro do swell/devin a partir das settings cifradas. */
+/** Plaintext URL + token for swell/devin from the encrypted settings. */
 function getSwellConfig(): { url: string; token: string } {
   const llm = getSettings().llm ?? {}
   const url = llm.swellUrl?.trim()
   const token = decryptSecret(llm.encSwellToken)
   if (!url || !token) {
-    throw new Error('Configure a URL e o token do swell/devin primeiro (⚙ na barra lateral).')
+    throw new Error('Configure the swell/devin URL and token first (⚙ in the sidebar).')
   }
   return { url: url.replace(/\/+$/, ''), token }
 }
 
 function messagesToPrompt(messages: ChatMessage[]): string {
   const label = (r: ChatMessage['role']): string =>
-    r === 'system' ? 'Instruções' : r === 'user' ? 'Usuário' : 'Assistente'
+    r === 'system' ? 'Instructions' : r === 'user' ? 'User' : 'Assistant'
   return messages.map((m) => `## ${label(m.role)}\n${m.content}`).join('\n\n')
 }
 
 /**
- * Chamada ao swell — wrapper local que manda um prompt único ao devin CLI (agente de código).
- * Sem roles, sem custo/tokens reportados; pode levar minutos numa tarefa real.
+ * Call to swell — local wrapper that sends a single prompt to the devin CLI (code agent).
+ * No roles, no cost/tokens reported; can take minutes on a real task.
  */
 async function chatSwell(messages: ChatMessage[], opts: ChatOptions): Promise<ChatResult> {
   const { url, token } = getSwellConfig()
   let prompt = messagesToPrompt(messages)
-  if (opts.json) prompt += '\n\nResponda apenas com um objeto JSON válido, sem texto ao redor.'
+  if (opts.json) prompt += '\n\nRespond only with a valid JSON object, without surrounding text.'
   const res = await fetch(`${url}/run`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-API-Key': token },
@@ -91,7 +91,7 @@ async function chatSwell(messages: ChatMessage[], opts: ChatOptions): Promise<Ch
     throw new Error(`swell/devin ${res.status}: ${text.slice(0, 400)}`)
   }
   const data = (await res.json()) as { success?: boolean; output?: string; error?: string }
-  if (!data.success || data.output == null) throw new Error(data.error || 'Resposta vazia do swell/devin')
+  if (!data.success || data.output == null) throw new Error(data.error || 'Empty response from swell/devin')
   return { content: data.output, usage: { promptTokens: 0, completionTokens: 0, cost: 0, calls: 1 } }
 }
 
@@ -100,7 +100,7 @@ export interface ChatResult {
   usage: LlmUsage
 }
 
-/** Chamada de chat completion. Retorna o texto e o consumo de tokens/custo. */
+/** Chat completion call. Returns the text and the token/cost usage. */
 export async function chat(
   model: string,
   messages: ChatMessage[],
@@ -116,7 +116,7 @@ export async function chat(
       messages,
       temperature: opts.temperature ?? 0.2,
       max_tokens: opts.maxTokens,
-      usage: { include: true }, // pede tokens + custo no retorno
+      usage: { include: true }, // requests tokens + cost in the response
       ...(opts.json ? { response_format: { type: 'json_object' } } : {})
     })
   })
@@ -129,7 +129,7 @@ export async function chat(
     usage?: { prompt_tokens?: number; completion_tokens?: number; cost?: number }
   }
   const content = data.choices?.[0]?.message?.content
-  if (content == null) throw new Error('Resposta vazia da LLM')
+  if (content == null) throw new Error('Empty response from the LLM')
   const usage: LlmUsage = {
     promptTokens: data.usage?.prompt_tokens ?? 0,
     completionTokens: data.usage?.completion_tokens ?? 0,
@@ -139,7 +139,7 @@ export async function chat(
   return { content, usage }
 }
 
-/** Chama a LLM esperando JSON e faz parse tolerante (remove cercas ```). */
+/** Calls the LLM expecting JSON and does tolerant parsing (removes code fences). */
 export async function chatJson<T>(
   model: string,
   messages: ChatMessage[],
@@ -151,10 +151,10 @@ export async function chatJson<T>(
 
 export function parseJsonLoose<T>(raw: string): T {
   let s = raw.trim()
-  // remove cercas de código se a LLM as incluir
+  // removes code fences if the LLM includes them
   const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/)
   if (fence) s = fence[1].trim()
-  // recorta do primeiro { ao último } se houver texto ao redor
+  // trims from the first { to the last } if there is surrounding text
   const first = s.indexOf('{')
   const last = s.lastIndexOf('}')
   if (first > 0 || (last !== -1 && last < s.length - 1)) {
@@ -166,11 +166,11 @@ export function parseJsonLoose<T>(raw: string): T {
 export interface ModelOption {
   id: string
   name: string
-  promptPrice: number      // USD por token
-  completionPrice: number  // USD por token
+  promptPrice: number      // USD per token
+  completionPrice: number  // USD per token
 }
 
-/** Busca lista de modelos do OpenRouter com preços para um token específico. */
+/** Fetches the list of OpenRouter models with prices for a specific token. */
 export async function listModelsForToken(
   token: string
 ): Promise<{ ok: boolean; models: ModelOption[] }> {
@@ -205,16 +205,16 @@ export interface ValidateInput {
 }
 
 /**
- * Valida token + os dois model codes. Modelos OpenRouter são checados contra a lista de modelos
- * da API; o sentinel SWELL_MODEL_ID é validado com uma chamada de teste ao endpoint local.
- * É o que o "Salvar" das configurações chama antes de persistir.
+ * Validates token + both model codes. OpenRouter models are checked against the model list
+ * from the API; the SWELL_MODEL_ID sentinel is validated with a test call to the local endpoint.
+ * This is what the settings "Save" calls before persisting.
  */
 export async function validateLlmConfig(
   input: ValidateInput
 ): Promise<{ ok: boolean; errors: string[] }> {
   const errors: string[] = []
-  if (!input.modelPrimary?.trim()) errors.push('Modelo primário vazio.')
-  if (!input.modelReviewer?.trim()) errors.push('Modelo revisor vazio.')
+  if (!input.modelPrimary?.trim()) errors.push('Primary model is empty.')
+  if (!input.modelReviewer?.trim()) errors.push('Reviewer model is empty.')
   if (errors.length) return { ok: false, errors }
 
   const models = [input.modelPrimary, input.modelReviewer]
@@ -224,21 +224,21 @@ export async function validateLlmConfig(
   let orIds: Set<string> | null = null
   if (needsOpenRouter) {
     if (!input.token?.trim()) {
-      errors.push('Token OpenRouter vazio.')
+      errors.push('OpenRouter token is empty.')
     } else {
       try {
         const res = await fetch(`${BASE}/models`, { headers: { Authorization: `Bearer ${input.token}` } })
         if (res.status === 401 || res.status === 403) {
-          errors.push('Token OpenRouter inválido ou sem permissão (HTTP ' + res.status + ').')
+          errors.push('OpenRouter token invalid or without permission (HTTP ' + res.status + ').')
         } else if (!res.ok) {
           const text = await res.text().catch(() => '')
-          errors.push(`OpenRouter respondeu ${res.status}: ${text.slice(0, 200)}`)
+          errors.push(`OpenRouter responded ${res.status}: ${text.slice(0, 200)}`)
         } else {
           const data = (await res.json()) as { data?: { id: string }[] }
           orIds = new Set((data.data ?? []).map((m) => m.id))
         }
       } catch (err) {
-        errors.push('Falha de rede ao validar OpenRouter: ' + (err instanceof Error ? err.message : String(err)))
+        errors.push('Network failure validating OpenRouter: ' + (err instanceof Error ? err.message : String(err)))
       }
     }
   }
@@ -246,8 +246,8 @@ export async function validateLlmConfig(
   if (needsSwell) {
     const url = input.swellUrl?.trim()
     const token = input.swellToken?.trim()
-    if (!url) errors.push('URL do swell/devin vazia.')
-    if (!token) errors.push('Token do swell/devin vazio.')
+    if (!url) errors.push('swell/devin URL is empty.')
+    if (!token) errors.push('swell/devin token is empty.')
     if (url && token) {
       try {
         const res = await fetch(`${url.replace(/\/+$/, '')}/run`, {
@@ -257,23 +257,23 @@ export async function validateLlmConfig(
           signal: AbortSignal.timeout(20000)
         })
         if (res.status === 401 || res.status === 403) {
-          errors.push('Token do swell/devin inválido.')
+          errors.push('swell/devin token is invalid.')
         } else if (!res.ok) {
           const text = await res.text().catch(() => '')
-          errors.push(`swell/devin respondeu ${res.status}: ${text.slice(0, 200)}`)
+          errors.push(`swell/devin responded ${res.status}: ${text.slice(0, 200)}`)
         }
       } catch (err) {
-        errors.push('Falha de rede ao validar swell/devin: ' + (err instanceof Error ? err.message : String(err)))
+        errors.push('Network failure validating swell/devin: ' + (err instanceof Error ? err.message : String(err)))
       }
     }
   }
 
   if (orIds) {
     if (input.modelPrimary !== SWELL_MODEL_ID && !orIds.has(input.modelPrimary)) {
-      errors.push(`Modelo primário não existe no OpenRouter: ${input.modelPrimary}`)
+      errors.push(`Primary model does not exist on OpenRouter: ${input.modelPrimary}`)
     }
     if (input.modelReviewer !== SWELL_MODEL_ID && !orIds.has(input.modelReviewer)) {
-      errors.push(`Modelo revisor não existe no OpenRouter: ${input.modelReviewer}`)
+      errors.push(`Reviewer model does not exist on OpenRouter: ${input.modelReviewer}`)
     }
   }
 

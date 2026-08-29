@@ -1,10 +1,10 @@
 import { collectPaths, readFile } from './vault'
 import type { SearchHit } from './types'
 
-const MAX_HITS = 500 // teto total (evita inundar a UI)
-const MAX_PER_FILE = 50 // teto por arquivo (idem)
+const MAX_HITS = 500 // total cap (avoids flooding the UI)
+const MAX_PER_FILE = 50 // per-file cap (same reason)
 
-// extensões de texto pesquisáveis (mesmas do docAnalysis)
+// searchable text extensions (same as docAnalysis)
 const SEARCH_EXTS = new Set(['.md', '.markdown', '.mdown', '.mkd', '.txt'])
 
 export async function search(vaultId: string, query: string): Promise<SearchHit[]> {

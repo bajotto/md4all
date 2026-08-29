@@ -30,7 +30,7 @@ export default function AgentsView({ vaultId }: { vaultId: string }): JSX.Elemen
 
   const apply = async (): Promise<void> => {
     if (!ctx) return
-    const ok = await window.api.confirm(`Gravar ${ctx.targetPath}? O arquivo anterior (se houver) vai para backup.`)
+    const ok = await window.api.confirm(`Write ${ctx.targetPath}? The previous file (if any) goes to backup.`)
     if (!ok) return
     setPhase('applying')
     try {
@@ -51,14 +51,14 @@ export default function AgentsView({ vaultId }: { vaultId: string }): JSX.Elemen
     return (
       <div className="doc-center">
         <p>
-          Gera um arquivo de contexto para agentes (AGENTS.md): bloco de fatos extraídos do repositório
-          (scripts, entry points, símbolos públicos — sem alucinação) + camada curada com âncoras.
+          Generates a context file for agents (AGENTS.md): block of facts extracted from the repository
+          (scripts, entry points, public symbols — no hallucination) + curated layer with anchors.
         </p>
         <div className="field-row" style={{ maxWidth: 360 }}>
           <input className="modal-input" value={target} onChange={(e) => setTarget(e.target.value)} />
         </div>
         <button className="modal-btn-ok" onClick={() => void run()}>
-          Gerar contexto
+          Generate context
         </button>
       </div>
     )
@@ -68,7 +68,7 @@ export default function AgentsView({ vaultId }: { vaultId: string }): JSX.Elemen
       <div className="doc-center">
         <p className="test-msg err">✗ {error}</p>
         <button className="modal-btn-cancel" onClick={() => setPhase('idle')}>
-          Voltar
+          Back
         </button>
       </div>
     )
@@ -78,23 +78,23 @@ export default function AgentsView({ vaultId }: { vaultId: string }): JSX.Elemen
     <div className="doc-agents">
       <div className="doc-audit-toolbar">
         <span>
-          {c.targetPath} · {c.factCount} fatos extraídos
+          {c.targetPath} · {c.factCount} facts extracted
         </span>
         <span className="doc-modal-spacer" />
         <UsageLine usage={c.usage} />
         <button className="inline-btn" onClick={() => void run()}>
-          Regerar
+          Regenerate
         </button>
         <button className="modal-btn-ok" onClick={() => void apply()}>
-          Gravar {c.targetPath}
+          Write {c.targetPath}
         </button>
       </div>
       {applied ? (
         <div className="doc-review ok">
-          ✓ Gravado em {applied.path}
+          ✓ Written to {applied.path}
           {applied.backup ? ` · backup: ${applied.backup}` : ''} ·{' '}
           <button className="doc-anchor" onClick={() => void openFile(vaultId, applied.path)}>
-            abrir
+            open
           </button>
         </div>
       ) : null}

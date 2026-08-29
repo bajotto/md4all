@@ -64,7 +64,7 @@ export default function Editor(): JSX.Element | null {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeKey, saveTab])
 
-  // atalho Cmd/Ctrl+S salva; Cmd/Ctrl+Alt+F abre substituição (Find+Replace)
+  // shortcut Cmd/Ctrl+S saves; Cmd/Ctrl+Alt+F opens replace (Find+Replace)
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
       const mod = e.ctrlKey || e.metaKey
@@ -81,7 +81,7 @@ export default function Editor(): JSX.Element | null {
     return () => window.removeEventListener('keydown', handler)
   }, [active, saveTab])
 
-  // menu nativo "Substituir" abre o FindBar em modo replace
+  // native "Replace" menu opens FindBar in replace mode
   useEffect(() => {
     const off = window.api.onMenu((cmd) => {
       if (cmd === 'replace') {
@@ -92,10 +92,10 @@ export default function Editor(): JSX.Element | null {
     return off
   }, [])
 
-  // revela a linha/termo de um resultado de busca clicado. Em modo código vai
-  // direto à linha (CodeMirror); em WYSIWYG destaca o termo e posiciona o cursor
-  // (ProseMirror via SearchController.setQuery). Usa retry porque o Milkdown
-  // inicializa o apiRef de forma assíncrona (dentro do callback de montagem).
+  // reveals the line/term of a clicked search result. In source mode it goes
+  // directly to the line (CodeMirror); in WYSIWYG it highlights the term and
+  // positions the cursor (ProseMirror via SearchController.setQuery). Uses retry
+  // because Milkdown initializes the apiRef asynchronously (inside the mount callback).
   useEffect(() => {
     if (!revealTarget || !active) return
     if (revealTarget.vaultId !== active.vaultId || revealTarget.path !== active.path) return
@@ -163,12 +163,12 @@ export default function Editor(): JSX.Element | null {
       <Toolbar fileName={tab.name} dirty={tab.dirty} />
       {tab.stale ? (
         <div className="stale-banner">
-          <span>⚠️ Arquivo foi modificado no disco. </span>
+          <span>⚠️ File was modified on disk. </span>
           <button
             onClick={() => void reloadTabFromDisk(active.vaultId, active.path)}
             style={{ marginLeft: '12px', padding: '4px 8px', cursor: 'pointer' }}
           >
-            Recarregar
+            Reload
           </button>
         </div>
       ) : null}

@@ -7,7 +7,7 @@ import { languages } from '@codemirror/language-data'
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language'
 import { findMatches, type MatchRange, type SearchController, type SearchOccurrence } from '../../editor/search'
 
-/** API imperativa de navegação no modo source (usada pelo sumário). */
+/** Imperative navigation API for source mode (used by the outline). */
 export interface SourceNav {
   goToLine: (line: number) => void
 }
@@ -19,7 +19,7 @@ interface Props {
   navRef?: MutableRefObject<SourceNav | null>
 }
 
-// ---- destaque das ocorrências via decorations ----
+// ---- highlight matches via decorations ----
 const setMatches = StateEffect.define<{ matches: MatchRange[]; current: number }>()
 const matchField = StateField.define<DecorationSet>({
   create: () => Decoration.none,
@@ -129,7 +129,7 @@ function createCmController(view: EditorView): SearchController {
   }
 }
 
-/** Modo source: edita o markdown cru com CodeMirror 6 e highlight de sintaxe. */
+/** Source mode: edits raw markdown with CodeMirror 6 and syntax highlighting. */
 export default function CodeMirrorSource({
   initialContent,
   onChange,

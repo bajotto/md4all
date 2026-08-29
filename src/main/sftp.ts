@@ -6,7 +6,7 @@ import type { FileNode, SftpConfig, Vault } from './types'
 
 const TEXT_EXTS = new Set(['.md', '.markdown', '.mdown', '.mkd', '.txt'])
 const IGNORED = new Set(['.git', 'node_modules', '.obsidian', '.DS_Store'])
-// pastas pesadas que não devem ser varridas na árvore (evita walk lento/travado)
+// heavy folders that should not be traversed in the tree (avoids slow/hung walk)
 const HEAVY_DIRS = new Set([
   'dist', 'build', 'out', '.next', 'coverage', 'vendor', 'target', '.cache',
   '__pycache__', '.venv', 'venv', 'site-packages', '__pypackages__',
@@ -17,24 +17,24 @@ function skipWalkDir(name: string): boolean {
   return IGNORED.has(name) || HEAVY_DIRS.has(name) || name.startsWith('.') || name.startsWith('_backup_')
 }
 
-const OP_TIMEOUT = 20_000 // nenhuma operação SFTP pode pendurar para sempre
+const OP_TIMEOUT = 20_000 // no SFTP operation can hang forever
 
-/** Garante que uma promise resolva/rejeite dentro de `ms`, senão rejeita com erro claro. */
+/** Ensures a promise resolves/rejects within `ms`, otherwise rejects with a clear error. */
 function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   return Promise.race([
     p,
     new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error(`Tempo esgotado (${ms / 1000}s) em: ${label}`)), ms)
+      setTimeout(() => reject(new Error(`Timed out (${ms / 1000}s) on: ${label}`)), ms)
     )
   ])
 }
 
-// ---------- segredos (safeStorage com fallback) ----------
+// ---------- secrets (safeStorage with fallback) ----------
 export function encryptSecret(plain: string): string {
   if (safeStorage.isEncryptionAvailable()) {
     return 'enc:' + safeStorage.encryptString(plain).toString('base64')
   }
-  // fallback (ambiente sem keychain): base64 simples — não é cifra forte
+  // fallback (environment without keychain): simple base64 — not strong encryption
   return 'b64:' + Buffer.from(plain, 'utf8').toString('base64')
 }
 
@@ -51,7 +51,7 @@ export function decryptSecret(enc?: string): string | undefined {
   return enc
 }
 
-// ---------- pool de conexões ----------
+// ---------- connection pool ----------
 const pool = new Map<string, SftpClient>()
 
 async function buildConnectOptions(cfg: SftpConfig): Promise<SftpClient.ConnectOptions> {
@@ -72,11 +72,11 @@ async function buildConnectOptions(cfg: SftpConfig): Promise<SftpClient.ConnectO
 }
 
 async function connect(vault: Vault): Promise<SftpClient> {
-  if (!vault.sftp) throw new Error('Vault SFTP sem configuração')
+  if (!vault.sftp) throw new Error('SFTP vault without configuration')
   const client = new SftpClient(`md4all-${vault.id}`)
   const opts = await buildConnectOptions(vault.sftp)
-  await withTimeout(client.connect(opts), OP_TIMEOUT, `conectar ${vault.sftp.host}`)
-  // ao cair a conexão, remove do pool para reconectar na próxima operação
+  await withTimeout(client.connect(opts), OP_TIMEOUT, `connect ${vault.sftp.host}`)
+  // when the connection drops, remove from pool to reconnect on the next operation
   const drop = (): void => {
     if (pool.get(vault.id) === client) pool.delete(vault.id)
   }
@@ -94,12 +94,12 @@ async function getClient(vault: Vault): Promise<SftpClient> {
   return client
 }
 
-/** Executa uma operação reconectando uma vez se a conexão tiver caído. */
+/** Executes an operation reconnecting once if the connection has dropped. */
 async function withClient<T>(vault: Vault, fn: (c: SftpClient) => Promise<T>): Promise<T> {
   try {
     return await fn(await getClient(vault))
   } catch (err) {
-    // tenta reconectar uma vez
+    // tries to reconnect once
     pool.delete(vault.id)
     const msg = err instanceof Error ? err.message : String(err)
     if (/connect|closed|ended|ECONN|timed out|not connected/i.test(msg)) {
@@ -117,11 +117,11 @@ export async function testConnection(cfg: SftpConfig, rootPath: string): Promise
     connected = true
     const target = rootPath || '.'
     const exists = await client.exists(target)
-    if (!exists) throw new Error(`Pasta remota não encontrada: ${target}`)
+    if (!exists) throw new Error(`Remote folder not found: ${target}`)
   } finally {
-    // só chama end() se a conexão foi estabelecida; se connect() falhou ele já
-    // chamou end() internamente, e uma segunda chamada pode travar aguardando
-    // um evento 'close' que já disparou.
+    // only call end() if the connection was established; if connect() failed it
+    // already called end() internally, and a second call can hang waiting for
+    // a 'close' event that already fired.
     if (connected) {
       try {
         await Promise.race([
@@ -129,7 +129,7 @@ export async function testConnection(cfg: SftpConfig, rootPath: string): Promise
           new Promise<void>((r) => setTimeout(r, 3000))
         ])
       } catch {
-        /* ignora */
+        /* ignore */
       }
     }
   }
@@ -143,7 +143,7 @@ export function disconnect(vaultId: string): void {
   }
 }
 
-// ---------- resolução de caminho remoto ----------
+// ---------- remote path resolution ----------
 function remoteRoot(vault: Vault): string {
   return vault.path && vault.path !== '' ? vault.path : '.'
 }
@@ -151,7 +151,7 @@ function remoteRoot(vault: Vault): string {
 function remoteResolve(vault: Vault, rel: string): string {
   const clean = rel.replace(/^[/\\]+/, '')
   if (clean.split('/').some((seg) => seg === '..')) {
-    throw new Error('Caminho fora do vault não permitido')
+    throw new Error('Path outside the vault is not allowed')
   }
   const root = remoteRoot(vault)
   return path.posix.join(root, clean)
@@ -164,16 +164,16 @@ function toRel(vault: Vault, abs: string): string {
   return rel
 }
 
-// ---------- operações de arquivo ----------
+// ---------- file operations ----------
 /**
- * Lista UM nível do vault remoto. Diretórios voltam SEM `children` (undefined =
- * "ainda não carregado") para que a árvore seja preguiçosa: nada de walk
- * recursivo gigante via SFTP (que travava/estourava timeout em homes grandes).
+ * Lists ONE level of the remote vault. Directories come back WITHOUT `children` (undefined =
+ * "not yet loaded") so the tree is lazy: no giant recursive walk via SFTP
+ * (which would hang/timeout on large home directories).
  */
 export async function listDir(vault: Vault, rel: string): Promise<FileNode[]> {
   const dir = rel ? remoteResolve(vault, rel) : remoteRoot(vault)
   return withClient(vault, async (client) => {
-    const entries = await withTimeout(client.list(dir), OP_TIMEOUT, `listar ${dir}`)
+    const entries = await withTimeout(client.list(dir), OP_TIMEOUT, `list ${dir}`)
     const nodes: FileNode[] = []
     for (const e of entries) {
       const abs = path.posix.join(dir, e.name)
@@ -192,12 +192,12 @@ export async function listDir(vault: Vault, rel: string): Promise<FileNode[]> {
   })
 }
 
-/** Árvore SFTP completa (recursiva). Usada por índice/busca/LLM — NÃO pela
- * barra lateral, que carrega preguiçosamente via `listDir`. */
+/** Full SFTP tree (recursive). Used by index/search/LLM — NOT by
+ * the sidebar, which loads lazily via `listDir`. */
 export async function listTree(vault: Vault): Promise<FileNode[]> {
   return withClient(vault, async (client) => {
     async function walk(dir: string): Promise<FileNode[]> {
-      const entries = await withTimeout(client.list(dir), OP_TIMEOUT, `listar ${dir}`)
+      const entries = await withTimeout(client.list(dir), OP_TIMEOUT, `list ${dir}`)
       const nodes: FileNode[] = []
       for (const e of entries) {
         const abs = path.posix.join(dir, e.name)
@@ -218,12 +218,12 @@ export async function listTree(vault: Vault): Promise<FileNode[]> {
   })
 }
 
-/** Coleta plana de caminhos relativos cujos arquivos batem com `exts` (vault remoto). */
+/** Flat collection of relative paths whose files match `exts` (remote vault). */
 export async function collectPaths(vault: Vault, exts: Set<string>): Promise<string[]> {
   return withClient(vault, async (client) => {
     const out: string[] = []
     async function walk(dir: string): Promise<void> {
-      const entries = await withTimeout(client.list(dir), OP_TIMEOUT, `listar ${dir}`)
+      const entries = await withTimeout(client.list(dir), OP_TIMEOUT, `list ${dir}`)
       for (const e of entries) {
         const abs = path.posix.join(dir, e.name)
         if (e.type === 'd') {
@@ -239,7 +239,7 @@ export async function collectPaths(vault: Vault, exts: Set<string>): Promise<str
   })
 }
 
-// ---------- navegação transitória (escolher raiz antes de criar o vault) ----------
+// ---------- transient browsing (choose root before creating the vault) ----------
 interface Transient {
   client: SftpClient
   timer: ReturnType<typeof setTimeout> | null
@@ -266,7 +266,7 @@ async function closeTransient(key: string): Promise<void> {
   try {
     await t.client.end()
   } catch {
-    /* ignora */
+    /* ignore */
   }
 }
 
@@ -277,12 +277,12 @@ async function getTransient(cfg: SftpConfig): Promise<SftpClient> {
     resetIdle(key)
     return existing.client
   }
-  // evita corrida: chamadas concorrentes compartilham UMA conexão em criação
+  // avoids race: concurrent calls share ONE connection being created
   let pending = transientConnecting.get(key)
   if (!pending) {
     pending = (async () => {
       const client = new SftpClient(`md4all-browse-${key}`)
-      await withTimeout(client.connect(await buildConnectOptions(cfg)), OP_TIMEOUT, `conectar ${cfg.host}`)
+      await withTimeout(client.connect(await buildConnectOptions(cfg)), OP_TIMEOUT, `connect ${cfg.host}`)
       transientPool.set(key, { client, timer: null })
       resetIdle(key)
       const drop = (): void => {
@@ -300,22 +300,22 @@ async function getTransient(cfg: SftpConfig): Promise<SftpClient> {
 }
 
 export interface BrowseResult {
-  path: string // diretório atual (absoluto)
-  parent: string | null // null na raiz
+  path: string // current directory (absolute)
+  parent: string | null // null at root
   dirs: { name: string; path: string }[]
-  fileCount: number // nº de arquivos no diretório atual (contexto)
+  fileCount: number // number of files in the current directory (context)
 }
 
-/** Lista UM nível do FS remoto (subpastas), reaproveitando uma conexão transitória. */
+/** Lists ONE level of the remote FS (subfolders), reusing a transient connection. */
 export async function browse(cfg: SftpConfig, remotePath?: string): Promise<BrowseResult> {
   const client = await getTransient(cfg)
-  // resolve para caminho absoluto (realPath também valida existência)
+  // resolve to absolute path (realPath also validates existence)
   const target = await withTimeout(
     client.realPath((remotePath && remotePath.trim()) || '.'),
     OP_TIMEOUT,
-    'resolver caminho'
+    'resolve path'
   )
-  const entries = await withTimeout(client.list(target), OP_TIMEOUT, `listar ${target}`)
+  const entries = await withTimeout(client.list(target), OP_TIMEOUT, `list ${target}`)
   const dirs = entries
     .filter((e) => e.type === 'd' && !IGNORED.has(e.name))
     .map((e) => ({ name: e.name, path: path.posix.join(target, e.name) }))
@@ -325,7 +325,7 @@ export async function browse(cfg: SftpConfig, remotePath?: string): Promise<Brow
   return { path: target, parent, dirs, fileCount }
 }
 
-/** Fecha todas as conexões transitórias (ao fechar o picker/modal). */
+/** Closes all transient connections (when closing the picker/modal). */
 export async function browseClose(): Promise<void> {
   await Promise.all([...transientPool.keys()].map((k) => closeTransient(k)))
 }
@@ -333,9 +333,9 @@ export async function browseClose(): Promise<void> {
 const MD_RE = /\.(md|markdown|mdown|mkd)$/i
 
 /**
- * Há algum .md em algum descendente de `rel`? Busca em background numa conexão
- * transitória (NÃO bloqueia a navegação), com curto-circuito no 1º .md e tetos
- * rígidos (nº de listagens + prazo) para nunca varrer árvores enormes.
+ * Is there any .md in some descendant of `rel`? Searches in the background on a
+ * transient connection (does NOT block navigation), with short-circuit on the
+ * 1st .md and hard caps (number of listings + deadline) to never scan huge trees.
  */
 export async function hasMarkdown(vault: Vault, rel: string): Promise<boolean> {
   if (!vault.sftp) return false
@@ -348,7 +348,7 @@ export async function hasMarkdown(vault: Vault, rel: string): Promise<boolean> {
     lists++
     let entries: SftpClient.FileInfo[]
     try {
-      entries = await withTimeout(client.list(dir), OP_TIMEOUT, `listar ${dir}`)
+      entries = await withTimeout(client.list(dir), OP_TIMEOUT, `list ${dir}`)
     } catch {
       return false
     }
@@ -357,7 +357,7 @@ export async function hasMarkdown(vault: Vault, rel: string): Promise<boolean> {
       if (e.type === 'd') {
         if (!skipWalkDir(e.name)) subdirs.push(path.posix.join(dir, e.name))
       } else if (MD_RE.test(e.name)) {
-        return true // curto-circuito: achou markdown
+        return true // short-circuit: found markdown
       }
     }
     for (const sd of subdirs) {
@@ -393,7 +393,7 @@ export async function writeFile(vault: Vault, rel: string, content: string): Pro
 export async function createFile(vault: Vault, rel: string): Promise<string> {
   const abs = remoteResolve(vault, rel)
   await withClient(vault, async (client) => {
-    if (await client.exists(abs)) throw new Error('Já existe um arquivo com esse nome')
+    if (await client.exists(abs)) throw new Error('A file with that name already exists')
     const dir = path.posix.dirname(abs)
     if (!(await client.exists(dir))) await client.mkdir(dir, true)
     await client.put(Buffer.from('', 'utf-8'), abs)

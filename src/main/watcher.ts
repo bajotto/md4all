@@ -4,7 +4,7 @@ import { BrowserWindow } from 'electron'
 import { getVault, isSftp } from './vault'
 import { removeNote, touchNote } from './vaultIndex'
 
-// um watcher por vault local (multi-raiz)
+// one watcher per local vault (multi-root)
 const watchers = new Map<string, FSWatcher>()
 
 function emit(channel: string, payload: unknown): void {
@@ -13,8 +13,8 @@ function emit(channel: string, payload: unknown): void {
   }
 }
 
-/** Observa a raiz de um vault local e emite eventos de mudança para o renderer.
- *  Vaults SFTP não são observados (sem watch remoto). */
+/** Watches the root of a local vault and emits change events to the renderer.
+ *  SFTP vaults are not watched (no remote watch). */
 export function watchVault(vaultId: string): void {
   if (watchers.has(vaultId)) return
   const vault = getVault(vaultId)

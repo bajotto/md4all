@@ -2,14 +2,14 @@ import { collectDocs } from './docAnalysis'
 import { chatJson, emptyUsage, getModels, type ChatMessage } from './llm'
 import type { LlmUsage } from './types'
 
-// Busca semântica: manda todos os .md do vault para a LLM (modelo primário já
-// configurado) e pede de volta os arquivos relevantes com um resumo do porquê.
-// Reusa collectDocs (lê .md/.txt, trata local e SFTP) e chatJson de llm.ts.
+// Semantic search: sends all .md files from the vault to the LLM (primary model
+// already configured) and asks for the relevant files back with a summary of why.
+// Reuses collectDocs (reads .md/.txt, handles local and SFTP) and chatJson from llm.ts.
 
 export interface AiSearchHit {
-  path: string // relativo ao vault
-  summary: string // por que é relevante (em pt-BR)
-  score: number // relevância 0..1
+  path: string // relative to the vault
+  summary: string // why it is relevant (in English)
+  score: number // relevance 0..1
 }
 
 export interface AiSearchResult {
@@ -19,49 +19,49 @@ export interface AiSearchResult {
 
 export type Progress = (msg: string, pct?: number) => void
 
-// orçamento de contexto (~4 chars/token). Deixa folga p/ prompt + resposta.
+// context budget (~4 chars/token). Leaves room for prompt + response.
 const TOTAL_MAX = 320_000
 const MAX_RESULTS = 20
 
-const SYSTEM_AI_SEARCH = `Você é um motor de busca semântica sobre as NOTAS em Markdown de um usuário.
-Receberá uma lista NUMERADA de documentos (cada um precedido de [N]) e uma CONSULTA em linguagem natural.
-Sua tarefa: encontrar os documentos genuinamente relevantes para a consulta — por significado, não só por palavra-chave.
+const SYSTEM_AI_SEARCH = `You are a semantic search engine over a user's Markdown NOTES.
+You will receive a NUMBERED list of documents (each preceded by [N]) and a natural language QUERY.
+Your task: find the documents genuinely relevant to the query — by meaning, not just by keyword.
 
-Regras inegociáveis:
-- Identifique os documentos pelo ÍNDICE NUMÉRICO N que aparece em [N]. NUNCA retorne um índice fora do intervalo fornecido.
-- Retorne só documentos realmente relevantes (pode ser zero). Não force resultados.
-- "summary" explica em 1–2 frases, em português, POR QUE o documento responde à consulta (cite o trecho/ideia relevante).
-- "score" é a relevância de 0 a 1 (1 = altamente relevante).
-- Ordene do mais relevante ao menos relevante. No máximo ${MAX_RESULTS} resultados.`
+Non-negotiable rules:
+- Identify documents by the NUMERIC INDEX N that appears in [N]. NEVER return an index outside the provided range.
+- Return only documents that are truly relevant (can be zero). Do not force results.
+- "summary" explains in 1–2 sentences, in English, WHY the document answers the query (cite the relevant passage/idea).
+- "score" is the relevance from 0 to 1 (1 = highly relevant).
+- Order from most relevant to least relevant. At most ${MAX_RESULTS} results.`
 
 function buildUserMessage(query: string, numbered: string): string {
-  return `CONSULTA: ${query}
+  return `QUERY: ${query}
 
-Responda APENAS com um objeto JSON exatamente neste formato (use o campo "index", não "path"):
+Respond ONLY with a JSON object exactly in this format (use the "index" field, not "path"):
 {
   "results": [
-    { "index": 0, "summary": "por que é relevante", "score": 0.95 }
+    { "index": 0, "summary": "why it is relevant", "score": 0.95 }
   ]
 }
 
-=== DOCUMENTOS ===
-${numbered || '(nenhum documento encontrado)'}`
+=== DOCUMENTS ===
+${numbered || '(no documents found)'}`
 }
 
-/** Trunca proporcionalmente o conteúdo dos documentos se estourar o orçamento. */
+/** Proportionally truncates document content if it exceeds the budget. */
 function fitDocs(docs: { path: string; content: string }[]): { path: string; content: string }[] {
   const total = docs.reduce((n, d) => n + d.content.length, 0)
   if (total <= TOTAL_MAX || docs.length === 0) return docs
   const perFile = Math.max(1_000, Math.floor(TOTAL_MAX / docs.length))
   return docs.map((d) =>
     d.content.length > perFile
-      ? { path: d.path, content: d.content.slice(0, perFile) + '\n…[truncado]' }
+      ? { path: d.path, content: d.content.slice(0, perFile) + '\n…[truncated]' }
       : d
   )
 }
 
-// Mapeia pelo índice retornado pelo LLM → caminho real do vault.
-// Usar índice (não caminho) elimina erros de normalização de string.
+// Maps by the index returned by the LLM → actual vault path.
+// Using the index (not path) eliminates string normalization errors.
 function normalize(raw: unknown, docs: { path: string; content: string }[]): AiSearchHit[] {
   const arr = Array.isArray((raw as { results?: unknown })?.results)
     ? (raw as { results: unknown[] }).results
@@ -91,16 +91,16 @@ export async function aiSearch(
   const q = query.trim()
   if (!q) return { results: [], usage: emptyUsage() }
 
-  // lança se token/modelos não estiverem configurados (capturado e exibido na UI)
+  // throws if token/models are not configured (caught and displayed in the UI)
   const { primary } = getModels()
 
-  onProgress('Lendo documentos do vault…', 10)
+  onProgress('Reading vault documents…', 10)
   const docs = fitDocs(await collectDocs(vaultId))
   if (docs.length === 0) return { results: [], usage: emptyUsage() }
 
   const numbered = docs.map((d, i) => `[${i}] ${d.path}\n${d.content}`).join('\n\n---\n\n')
 
-  onProgress('Consultando a LLM…', 50)
+  onProgress('Querying the LLM…', 50)
   const messages: ChatMessage[] = [
     { role: 'system', content: SYSTEM_AI_SEARCH },
     { role: 'user', content: buildUserMessage(q, numbered) }
@@ -111,6 +111,6 @@ export async function aiSearch(
   })
 
   const results = normalize(value, docs)
-  onProgress('Busca concluída.', 100)
+  onProgress('Search complete.', 100)
   return { results, usage }
 }

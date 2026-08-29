@@ -3,17 +3,17 @@ import { Decoration, DecorationSet } from '@milkdown/kit/prose/view'
 import type { Node as PMNode } from '@milkdown/kit/prose/model'
 
 /**
- * Preview ao vivo de blocos ```mermaid``` no editor WYSIWYG.
+ * Live preview of ```mermaid``` blocks in the WYSIWYG editor.
  *
- * Não substitui o bloco de código (que continua editável no CodeMirror do
- * Crepe): adiciona logo abaixo dele uma widget decoration que renderiza o
- * diagrama. O resultado é cache-ado por (tema + código), e a `key` estável da
- * decoration faz o ProseMirror reaproveitar o DOM entre edições (sem flicker).
+ * Does not replace the code block (which remains editable in the Crepe's
+ * CodeMirror): adds a widget decoration right below it that renders the
+ * diagram. The result is cached by (theme + code), and the stable decoration
+ * `key` lets ProseMirror reuse the DOM across edits (no flicker).
  */
 
 const mermaidKey = new PluginKey('md4all-mermaid')
 
-// cache de SVG por chave "tema:codigo" — evita re-render desnecessário
+// SVG cache by "theme:code" key — avoids unnecessary re-render
 const svgCache = new Map<string, string>()
 
 let mermaidMod: typeof import('mermaid').default | null = null
@@ -72,7 +72,7 @@ function buildDecorations(doc: PMNode): DecorationSet {
     const end = pos + node.nodeSize
     decos.push(
       Decoration.widget(end, () => makeContainer(code), {
-        // key estável: mesma combinação tema+código reaproveita o DOM
+        // stable key: same theme+code combination reuses the DOM
         key: `mermaid:${isDark() ? 'd' : 'l'}:${code}`,
         side: 1
       })
@@ -81,7 +81,7 @@ function buildDecorations(doc: PMNode): DecorationSet {
   return DecorationSet.create(doc, decos)
 }
 
-/** Plugin ProseMirror que mantém os previews de mermaid sincronizados. */
+/** ProseMirror plugin that keeps mermaid previews in sync. */
 export function mermaidPlugin(): Plugin {
   return new Plugin({
     key: mermaidKey,

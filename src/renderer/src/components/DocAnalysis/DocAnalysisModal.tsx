@@ -13,9 +13,9 @@ interface Props {
 type Mode = 'audit' | 'agents' | 'rewrite'
 
 const TABS: { id: Mode; label: string }[] = [
-  { id: 'audit', label: 'Auditoria' },
-  { id: 'agents', label: 'Contexto do agente' },
-  { id: 'rewrite', label: 'Reescrita (avançado)' }
+  { id: 'audit', label: 'Audit' },
+  { id: 'agents', label: 'Agent context' },
+  { id: 'rewrite', label: 'Rewrite (advanced)' }
 ]
 
 export default function DocAnalysisModal({ onClose }: Props): JSX.Element {
@@ -30,7 +30,7 @@ export default function DocAnalysisModal({ onClose }: Props): JSX.Element {
     <div className="modal-overlay" onClick={onClose}>
       <div className="doc-modal" onClick={(e) => e.stopPropagation()}>
         <header className="doc-modal-header">
-          <span className="doc-modal-title">🤖 Documentação para agentes</span>
+          <span className="doc-modal-title">🤖 Documentation for agents</span>
           {vaults.length > 1 ? (
             <select value={vaultId} onChange={(e) => setVaultId(e.target.value)}>
               {vaults.map((v: Vault) => (
@@ -48,7 +48,7 @@ export default function DocAnalysisModal({ onClose }: Props): JSX.Element {
             ))}
           </div>
           <span className="doc-modal-spacer" />
-          <button className="icon-btn" onClick={onClose} title="Fechar">
+          <button className="icon-btn" onClick={onClose} title="Close">
             ✕
           </button>
         </header>
@@ -56,11 +56,11 @@ export default function DocAnalysisModal({ onClose }: Props): JSX.Element {
         <div className="doc-modal-body">
           {configured === false ? (
             <div className="doc-center">
-              <p>Configure o token do OpenRouter e os dois modelos (⚙ na barra lateral) antes de usar.</p>
+              <p>Configure the OpenRouter token and both models (⚙ in the sidebar) before using.</p>
             </div>
           ) : !vaultId ? (
             <div className="doc-center">
-              <p>Nenhum vault selecionado.</p>
+              <p>No vault selected.</p>
             </div>
           ) : mode === 'audit' ? (
             <AuditView key={vaultId + ':audit'} vaultId={vaultId} />

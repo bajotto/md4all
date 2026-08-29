@@ -21,7 +21,7 @@ export default function InputModal({ title, placeholder, defaultValue = '', onCo
     const v = value.trim()
     if (!v) return
     if (v.includes('/')) {
-      alert('Nome não pode conter "/"')
+      alert('Name cannot contain "/"')
       return
     }
     onConfirm(v)
@@ -43,7 +43,7 @@ export default function InputModal({ title, placeholder, defaultValue = '', onCo
           }}
         />
         <div className="modal-actions">
-          <button className="modal-btn-cancel" onClick={onCancel}>Cancelar</button>
+          <button className="modal-btn-cancel" onClick={onCancel}>Cancel</button>
           <button className="modal-btn-ok" onClick={confirm}>OK</button>
         </div>
       </div>

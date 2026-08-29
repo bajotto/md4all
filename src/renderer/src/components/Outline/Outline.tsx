@@ -6,13 +6,13 @@ interface Props {
 }
 
 /**
- * Sumário (TOC) do documento ativo. Lista os headings e, ao clicar,
- * rola o editor até o título correspondente (em ambos os modos).
+ * Table of contents (TOC) for the active document. Lists headings and, on click,
+ * scrolls the editor to the corresponding title (in both modes).
  */
 export default function Outline({ items, onSelect }: Props): JSX.Element {
   return (
     <aside className="outline">
-      <div className="outline-head">Tópicos</div>
+      <div className="outline-head">Topics</div>
       <nav className="outline-list">
         {items.map((it) => (
           <button

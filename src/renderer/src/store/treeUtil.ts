@@ -1,8 +1,8 @@
 import type { FileNode } from '../types'
 
 /**
- * Define imutavelmente os filhos do nó em `targetPath` (árvore lazy SFTP).
- * Desce apenas pelos diretórios cujo caminho é prefixo do alvo.
+ * Immutably sets the children of the node at `targetPath` (lazy SFTP tree).
+ * Descends only through directories whose path is a prefix of the target.
  */
 export function setChildrenAt(
   nodes: FileNode[],
@@ -18,7 +18,7 @@ export function setChildrenAt(
   })
 }
 
-/** Marca `hasMd` no nó em `targetPath` imutavelmente (resultado da sondagem SFTP). */
+/** Immutably marks `hasMd` on the node at `targetPath` (result of SFTP probing). */
 export function setHasMdAt(nodes: FileNode[], targetPath: string, hasMd: boolean): FileNode[] {
   return nodes.map((n) => {
     if (n.path === targetPath) return { ...n, hasMd }

@@ -1,8 +1,8 @@
-// Ad-hoc code signing para macOS.
-// Sem um Apple Developer ID (US$99/ano) não dá para notarizar, mas o
-// ad-hoc signing (assinatura "-") é OBRIGATÓRIO no Apple Silicon: sem ele
-// o macOS recusa o app como "damaged and can't be opened".
-// Com ad-hoc, o usuário só precisa do clássico botão direito → Abrir uma vez.
+// Ad-hoc code signing for macOS.
+// Without an Apple Developer ID ($99/year) we can't notarize, but
+// ad-hoc signing (signing with "-") is MANDATORY on Apple Silicon: without it
+// macOS rejects the app as "damaged and can't be opened".
+// With ad-hoc, the user only needs the classic right-click → Open once.
 const { execSync } = require('child_process')
 
 exports.default = async function afterPack(context) {
@@ -11,10 +11,10 @@ exports.default = async function afterPack(context) {
   const appPath = `${context.appOutDir}/${appName}.app`
   console.log(`[after-pack] ad-hoc signing ${appPath}`)
   execSync(`codesign --force --deep --sign - "${appPath}"`, { stdio: 'inherit' })
-  // remove o atributo de quarentena que possa ter sido herdado
+  // remove the quarantine attribute that may have been inherited
   try {
     execSync(`xattr -cr "${appPath}"`, { stdio: 'inherit' })
   } catch {
-    /* xattr pode não existir/ falhar em CI; não é crítico */
+    /* xattr may not exist / fail in CI; not critical */
   }
 }

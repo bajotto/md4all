@@ -1,7 +1,7 @@
-// Converte caminhos de imagem entre a forma salva em disco (relativa, ex.:
-// "assets/foo.png") e a URL servida pelo protocolo customizado do Electron
-// ("md4all-asset://<vaultId>/assets/foo.png"). Assim o markdown salvo
-// permanece portável (caminhos relativos) e as imagens aparecem no editor.
+// Converts image paths between the form saved on disk (relative, e.g.:
+// "assets/foo.png") and the URL served by the Electron custom protocol
+// ("md4all-asset://<vaultId>/assets/foo.png"). This way the saved markdown
+// remains portable (relative paths) and images appear in the editor.
 
 const IMG_MD = /(!\[[^\]]*\]\()([^)\s]+)(\s*(?:"[^"]*")?\))/g
 
@@ -9,7 +9,7 @@ function isRemote(src: string): boolean {
   return /^[a-z][a-z0-9+.-]*:/i.test(src) || src.startsWith('//') || src.startsWith('data:')
 }
 
-/** disco -> exibição: prefixa caminhos relativos com o protocolo do vault. */
+/** disk -> display: prefixes relative paths with the vault protocol. */
 export function toDisplay(markdown: string, vaultId: string): string {
   return markdown.replace(IMG_MD, (_m, pre, src, post) => {
     if (isRemote(src)) return `${pre}${src}${post}`
@@ -18,7 +18,7 @@ export function toDisplay(markdown: string, vaultId: string): string {
   })
 }
 
-/** exibição -> disco: remove o prefixo do protocolo, restaurando o caminho relativo. */
+/** display -> disk: removes the protocol prefix, restoring the relative path. */
 export function toStorage(markdown: string, vaultId: string): string {
   const prefix = `md4all-asset://${vaultId}/`
   return markdown.replace(IMG_MD, (_m, pre, src, post) => {

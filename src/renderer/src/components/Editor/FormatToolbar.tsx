@@ -17,7 +17,7 @@ import { toggleStrikethroughCommand, insertTableCommand } from '@milkdown/kit/pr
 import { applyColorCommand } from '../../editor/colorMark'
 import type { EditorApi } from './MilkdownCrepe'
 
-// paleta padrão do seletor de cor (funciona em tema claro e escuro)
+// default palette for the color picker (works in both light and dark themes)
 const PALETTE = [
   '#e11d48',
   '#ea580c',
@@ -37,9 +37,9 @@ interface Props {
 }
 
 /**
- * Barra de formatação sempre visível para o modo WYSIWYG.
- * Usa onMouseDown+preventDefault para preservar a seleção do ProseMirror
- * (o clique no botão não rouba o foco do editor).
+ * Always-visible formatting toolbar for WYSIWYG mode.
+ * Uses onMouseDown+preventDefault to preserve the ProseMirror selection
+ * (clicking the button doesn't steal focus from the editor).
  */
 export default function FormatToolbar({ apiRef, vaultId }: Props): JSX.Element {
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -56,7 +56,7 @@ export default function FormatToolbar({ apiRef, vaultId }: Props): JSX.Element {
     setColorOpen(false)
   }
 
-  // fecha o popover de cor ao clicar fora
+  // closes the color popover when clicking outside
   useEffect(() => {
     if (!colorOpen) return
     const onDown = (e: MouseEvent): void => {
@@ -75,7 +75,7 @@ export default function FormatToolbar({ apiRef, vaultId }: Props): JSX.Element {
     run(insertImageCommand.key, { src: `md4all-asset://${vaultId}/${encodeURI(rel)}`, alt: file.name })
   }
 
-  // botão: previne mousedown (mantém foco/seleção) e dispara no click
+  // button: prevents mousedown (keeps focus/selection) and triggers on click
   const btn = (
     label: React.ReactNode,
     title: string,
@@ -94,22 +94,22 @@ export default function FormatToolbar({ apiRef, vaultId }: Props): JSX.Element {
   return (
     <div className="format-toolbar">
       <div className="fmt-group">
-        {btn('H1', 'Título 1', () => run(wrapInHeadingCommand.key, 1))}
-        {btn('H2', 'Título 2', () => run(wrapInHeadingCommand.key, 2))}
-        {btn('H3', 'Título 3', () => run(wrapInHeadingCommand.key, 3))}
-        {btn('¶', 'Texto normal', () => run(turnIntoTextCommand.key))}
+        {btn('H1', 'Heading 1', () => run(wrapInHeadingCommand.key, 1))}
+        {btn('H2', 'Heading 2', () => run(wrapInHeadingCommand.key, 2))}
+        {btn('H3', 'Heading 3', () => run(wrapInHeadingCommand.key, 3))}
+        {btn('¶', 'Normal text', () => run(turnIntoTextCommand.key))}
       </div>
       <span className="fmt-sep" />
       <div className="fmt-group">
-        {btn(<b>B</b>, 'Negrito (Ctrl/Cmd+B)', () => run(toggleStrongCommand.key))}
-        {btn(<i>I</i>, 'Itálico (Ctrl/Cmd+I)', () => run(toggleEmphasisCommand.key))}
-        {btn(<s>S</s>, 'Tachado', () => run(toggleStrikethroughCommand.key))}
-        {btn(<code>{'</>'}</code>, 'Código inline', () => run(toggleInlineCodeCommand.key))}
+        {btn(<b>B</b>, 'Bold (Ctrl/Cmd+B)', () => run(toggleStrongCommand.key))}
+        {btn(<i>I</i>, 'Italic (Ctrl/Cmd+I)', () => run(toggleEmphasisCommand.key))}
+        {btn(<s>S</s>, 'Strikethrough', () => run(toggleStrikethroughCommand.key))}
+        {btn(<code>{'</>'}</code>, 'Inline code', () => run(toggleInlineCodeCommand.key))}
         {btn('🔗', 'Link', () => run(toggleLinkCommand.key, { href: '' }))}
         <div className="color-wrap" ref={colorWrapRef}>
           <button
             className="fmt-btn"
-            title="Cor do texto"
+            title="Text color"
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => setColorOpen((v) => !v)}
           >
@@ -131,8 +131,8 @@ export default function FormatToolbar({ apiRef, vaultId }: Props): JSX.Element {
                 ))}
               </div>
               <div className="color-actions">
-                <label className="color-custom" title="Cor personalizada">
-                  <span>Outra…</span>
+                <label className="color-custom" title="Custom color">
+                  <span>Other…</span>
                   <input
                     type="color"
                     onMouseDown={(e) => e.stopPropagation()}
@@ -145,7 +145,7 @@ export default function FormatToolbar({ apiRef, vaultId }: Props): JSX.Element {
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => applyColor(undefined)}
                 >
-                  Remover
+                  Remove
                 </button>
               </div>
             </div>
@@ -154,16 +154,16 @@ export default function FormatToolbar({ apiRef, vaultId }: Props): JSX.Element {
       </div>
       <span className="fmt-sep" />
       <div className="fmt-group">
-        {btn('• ', 'Lista', () => run(wrapInBulletListCommand.key))}
-        {btn('1.', 'Lista numerada', () => run(wrapInOrderedListCommand.key))}
-        {btn('❝', 'Citação', () => run(wrapInBlockquoteCommand.key))}
+        {btn('• ', 'List', () => run(wrapInBulletListCommand.key))}
+        {btn('1.', 'Numbered list', () => run(wrapInOrderedListCommand.key))}
+        {btn('❝', 'Quote', () => run(wrapInBlockquoteCommand.key))}
       </div>
       <span className="fmt-sep" />
       <div className="fmt-group">
-        {btn('{ }', 'Bloco de código', () => run(createCodeBlockCommand.key))}
-        {btn('▦', 'Tabela', () => run(insertTableCommand.key))}
-        {btn('🖼', 'Imagem', () => fileInputRef.current?.click())}
-        {btn('―', 'Linha horizontal', () => run(insertHrCommand.key))}
+        {btn('{ }', 'Code block', () => run(createCodeBlockCommand.key))}
+        {btn('▦', 'Table', () => run(insertTableCommand.key))}
+        {btn('🖼', 'Image', () => fileInputRef.current?.click())}
+        {btn('―', 'Horizontal line', () => run(insertHrCommand.key))}
       </div>
       <input
         ref={fileInputRef}

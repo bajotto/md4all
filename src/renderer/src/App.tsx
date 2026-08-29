@@ -23,8 +23,8 @@ export default function App(): JSX.Element {
     void init()
   }, [init])
 
-  // Cmd/Ctrl+F e menu "Localizar" abrem o painel de busca global
-  // Cmd/Ctrl+Shift+F também abre (atalho alternativo)
+  // Cmd/Ctrl+F and "Find" menu open the global search panel
+  // Cmd/Ctrl+Shift+F also opens (alternative shortcut)
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
       const mod = e.ctrlKey || e.metaKey
@@ -37,7 +37,7 @@ export default function App(): JSX.Element {
     return () => window.removeEventListener('keydown', handler)
   }, [openSearchPanel])
 
-  // menu nativo "Localizar" → drawer de busca; "Substituir" → FindBar (no Editor)
+  // native "Find" menu → search drawer; "Replace" → FindBar (in Editor)
   useEffect(() => {
     const off = window.api.onMenu((cmd) => {
       if (cmd === 'find') openSearchPanel()
@@ -45,7 +45,7 @@ export default function App(): JSX.Element {
     return off
   }, [openSearchPanel])
 
-  // reage a mudanças externas no filesystem (chokidar -> IPC), por vault
+  // reacts to external filesystem changes (chokidar -> IPC), per vault
   useEffect(() => {
     const off = window.api.onFsEvent((evt) => {
       void refreshTree(evt.vaultId)

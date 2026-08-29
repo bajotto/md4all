@@ -61,7 +61,7 @@ export function registerIpc(): void {
   ipcMain.handle('vault:pickFolder', async () => {
     const result = await dialog.showOpenDialog({
       properties: ['openDirectory', 'createDirectory'],
-      message: 'Escolha a pasta do vault (disco local, /Volumes/<share> SMB, ou iCloud)'
+      message: 'Choose the vault folder (local disk, /Volumes/<share> SMB, or iCloud)'
     })
     if (result.canceled || result.filePaths.length === 0) return null
     const folder = result.filePaths[0]
@@ -77,14 +77,14 @@ export function registerIpc(): void {
   ipcMain.handle('vault:pickKey', async () => {
     const result = await dialog.showOpenDialog({
       properties: ['openFile'],
-      message: 'Selecione a chave privada / certificado (ex.: id_rsa, .pem)'
+      message: 'Select the private key / certificate (e.g., id_rsa, .pem)'
     })
     if (result.canceled || result.filePaths.length === 0) return null
     return result.filePaths[0]
   })
   ipcMain.handle('vault:unwatch', (_e, vaultId: string) => unwatchVault(vaultId))
 
-  // ---- arquivos ----
+  // ---- files ----
   ipcMain.handle('file:tree', (_e, vaultId: string) => listTree(vaultId))
   ipcMain.handle('file:listDir', (_e, vaultId: string, relPath: string) => listDir(vaultId, relPath))
   ipcMain.handle('file:hasMarkdown', (_e, vaultId: string, relPath: string) =>
@@ -110,7 +110,7 @@ export function registerIpc(): void {
     removeNote(vaultId, relPath)
   })
 
-  // ---- índice (wikilinks / tags / backlinks) ----
+  // ---- index (wikilinks / tags / backlinks) ----
   ipcMain.handle('index:build', (_e, vaultId: string) => buildIndex(vaultId))
   ipcMain.handle('index:backlinks', (_e, vaultId: string, relPath: string) =>
     backlinksFor(vaultId, relPath)
@@ -124,22 +124,22 @@ export function registerIpc(): void {
   )
   ipcMain.handle('index:notes', (_e, vaultId: string) => listNotes(vaultId))
 
-  // ---- imagens / assets ----
+  // ---- images / assets ----
   ipcMain.handle('asset:save', (_e, vaultId: string, fileName: string, data: Uint8Array) =>
     saveAsset(vaultId, fileName, new Uint8Array(data))
   )
 
-  // ---- busca ----
+  // ---- search ----
   ipcMain.handle('search:run', (_e, vaultId: string, query: string) => search(vaultId, query))
   ipcMain.handle('search:ai', (e, vaultId: string, query: string) =>
     aiSearch(vaultId, query, (msg, pct) => e.sender.send('search:ai-progress', { msg, pct }))
   )
 
-  // ---- dialogs nativos ----
+  // ---- native dialogs ----
   ipcMain.handle('dialog:confirm', async (_e, message: string) => {
     const result = await dialog.showMessageBox({
       type: 'question',
-      buttons: ['Cancelar', 'OK'],
+      buttons: ['Cancel', 'OK'],
       defaultId: 1,
       cancelId: 0,
       message
@@ -147,7 +147,7 @@ export function registerIpc(): void {
     return result.response === 1
   })
   ipcMain.handle('dialog:error', async (_e, message: string) => {
-    await dialog.showErrorBox('Erro', message)
+    await dialog.showErrorBox('Error', message)
   })
 
   // ---- export ----
@@ -200,7 +200,7 @@ export function registerIpc(): void {
         swellToken?: string
       }
     ) => {
-      // token vazio + token já salvo => usa o existente (usuário só editou os modelos)
+      // empty token + already saved token => use the existing one (user only edited the models)
       const existing = getSettings().llm ?? {}
       const newToken = input.token?.trim()
       const effectiveToken = newToken || decryptSecret(existing.encToken) || ''
@@ -228,7 +228,7 @@ export function registerIpc(): void {
     }
   )
 
-  // ---- análise de documentação por LLM ----
+  // ---- documentation analysis by LLM ----
   ipcMain.handle('doc:audit', (e, vaultId: string) =>
     audit(vaultId, (msg, pct) => e.sender.send('doc:progress', { msg, pct }))
   )

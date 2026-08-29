@@ -16,10 +16,10 @@ function join(dir: string, name: string): string {
 const MD_RE = /\.(md|markdown|mdown|mkd)$/i
 
 /**
- * Uma pasta deve ficar azul se houver markdown em qualquer descendente. Combina
- * a sondagem assíncrona (`hasMd`, usada p/ subárvores ainda não carregadas no
- * vault SFTP) com uma checagem síncrona dos filhos já carregados — assim a
- * cadeia pasta→arquivo acende na hora, sem depender do término da sondagem.
+ * A folder should be blue if there is markdown in any descendant. Combines
+ * async probing (`hasMd`, used for subtrees not yet loaded in the SFTP vault)
+ * with a synchronous check of already-loaded children — so the
+ * folder→file chain lights up immediately, without waiting for probing to finish.
  */
 function subtreeHasMd(node: FileNode): boolean {
   if (node.hasMd) return true
@@ -27,7 +27,7 @@ function subtreeHasMd(node: FileNode): boolean {
   return node.children.some((c) => (c.isDir ? subtreeHasMd(c) : MD_RE.test(c.name)))
 }
 
-/** Ícone discreto de documento (estilo Lettera) antes do nome do arquivo. */
+/** Subtle document icon (Lettera-style) before the file name. */
 function FileIcon(): JSX.Element {
   return (
     <svg className="tree-file-icon" width="13" height="13" viewBox="0 0 16 16" aria-hidden="true">
@@ -65,7 +65,7 @@ function TreeNode({ vaultId, node, depth, openModal, vaultPath }: {
 
   const [open, setOpen] = useState(false)
 
-  // expande/recolhe; carrega filhos sob demanda (árvore SFTP preguiçosa)
+  // expands/collapses; loads children on demand (lazy SFTP tree)
   const toggleOpen = (): void => {
     const next = !open
     setOpen(next)
@@ -73,24 +73,24 @@ function TreeNode({ vaultId, node, depth, openModal, vaultPath }: {
   }
 
   const askRename = (): void => openModal({
-    title: `Renomear "${node.name}"`,
-    placeholder: 'Novo nome',
+    title: `Rename "${node.name}"`,
+    placeholder: 'New name',
     defaultValue: node.name,
     onConfirm: (next) => void renamePath(vaultId, node.path, join(parentDir(node.path), next))
   })
   const askDelete = async (): Promise<void> => {
-    const ok = await window.api.confirm(`Apagar "${node.name}"? Esta ação não pode ser desfeita.`)
+    const ok = await window.api.confirm(`Delete "${node.name}"? This action cannot be undone.`)
     if (ok) void deletePath(vaultId, node.path)
   }
   const askNewFile = (): void => openModal({
-    title: 'Novo arquivo',
-    placeholder: 'nome.md',
+    title: 'New file',
+    placeholder: 'name.md',
     defaultValue: '',
     onConfirm: (name) => void createFile(vaultId, join(node.path, name))
   })
   const askNewFolder = (): void => openModal({
-    title: 'Nova pasta',
-    placeholder: 'nome-da-pasta',
+    title: 'New folder',
+    placeholder: 'folder-name',
     defaultValue: '',
     onConfirm: (name) => void createFolder(vaultId, join(node.path, name))
   })
@@ -109,22 +109,22 @@ function TreeNode({ vaultId, node, depth, openModal, vaultPath }: {
       <div className="tree-folder">
         <div className="tree-row" style={{ paddingLeft: depth * 12 + 8 }} onClick={toggleOpen} onContextMenu={copyFullPath}>
           <span className="tree-caret">{open ? '▾' : '▸'}</span>
-          <span className={`tree-label ${hasMd ? 'has-md' : ''}`} title={hasMd ? 'Contém markdown' : undefined}>
+          <span className={`tree-label ${hasMd ? 'has-md' : ''}`} title={hasMd ? 'Contains markdown' : undefined}>
             {node.name}
           </span>
           <span className="tree-actions" onClick={(e) => e.stopPropagation()}>
-            <button title="Novo arquivo" onClick={askNewFile}>+</button>
-            <button title="Nova pasta" onClick={askNewFolder}>⊞</button>
-            <button title="Copiar" onClick={doCopy}>📋</button>
-            {clipboard ? <button title="Colar" onClick={doPaste}>📌</button> : null}
-            <button title="Renomear" onClick={askRename}>✎</button>
-            <button title="Apagar" onClick={() => void askDelete()}>🗑</button>
+            <button title="New file" onClick={askNewFile}>+</button>
+            <button title="New folder" onClick={askNewFolder}>⊞</button>
+            <button title="Copy" onClick={doCopy}>📋</button>
+            {clipboard ? <button title="Paste" onClick={doPaste}>📌</button> : null}
+            <button title="Rename" onClick={askRename}>✎</button>
+            <button title="Delete" onClick={() => void askDelete()}>🗑</button>
           </span>
         </div>
         {open ? (
           node.children === undefined ? (
             loadingChildren ? (
-              <p className="tree-empty" style={{ paddingLeft: depth * 12 + 22 }}>Carregando…</p>
+              <p className="tree-empty" style={{ paddingLeft: depth * 12 + 22 }}>Loading…</p>
             ) : null
           ) : (
             node.children.map((c) => (
@@ -148,16 +148,16 @@ function TreeNode({ vaultId, node, depth, openModal, vaultPath }: {
       <FileIcon />
       <span className={`tree-label ${isMd ? 'is-md' : ''}`}>{node.name}</span>
       <span className="tree-actions" onClick={(e) => e.stopPropagation()}>
-        <button title="Copiar" onClick={doCopy}>📋</button>
-        {clipboard ? <button title="Colar aqui" onClick={doPaste}>📌</button> : null}
-        <button title="Renomear" onClick={askRename}>✎</button>
-        <button title="Apagar" onClick={() => void askDelete()}>🗑</button>
+        <button title="Copy" onClick={doCopy}>📋</button>
+        {clipboard ? <button title="Paste here" onClick={doPaste}>📌</button> : null}
+        <button title="Rename" onClick={askRename}>✎</button>
+        <button title="Delete" onClick={() => void askDelete()}>🗑</button>
       </span>
     </div>
   )
 }
 
-/** Uma raiz de vault na sidebar multi-raiz: cabeçalho + árvore. */
+/** A vault root in the multi-root sidebar: header + tree. */
 export default function VaultRoot({ vault }: { vault: Vault }): JSX.Element {
   const expanded = useStore((s) => s.expanded[vault.id] ?? false)
   const loading = useStore((s) => s.loadingTree[vault.id] ?? false)
@@ -174,20 +174,20 @@ export default function VaultRoot({ vault }: { vault: Vault }): JSX.Element {
   const openModal = (s: NonNullable<ModalState>): void => setModal(s)
 
   const askNewFile = (): void => openModal({
-    title: `Novo arquivo em ${vault.name}`,
-    placeholder: 'nome.md',
+    title: `New file in ${vault.name}`,
+    placeholder: 'name.md',
     defaultValue: '',
     onConfirm: (name) => void createFile(vault.id, name)
   })
   const askNewFolder = (): void => openModal({
-    title: `Nova pasta em ${vault.name}`,
-    placeholder: 'nome-da-pasta',
+    title: `New folder in ${vault.name}`,
+    placeholder: 'folder-name',
     defaultValue: '',
     onConfirm: (name) => void createFolder(vault.id, name)
   })
   const askRemove = async (): Promise<void> => {
     const ok = await window.api.confirm(
-      `Remover o vault "${vault.name}" da lista? (os arquivos não serão apagados)`
+      `Remove vault "${vault.name}" from the list? (files will not be deleted)`
     )
     if (ok) void removeVault(vault.id)
   }
@@ -214,19 +214,19 @@ export default function VaultRoot({ vault }: { vault: Vault }): JSX.Element {
         <span className="vault-root-icon">{vault.kind === 'sftp' ? '🌐' : '📁'}</span>
         <span className="vault-root-name">{vault.name}</span>
         <span className="tree-actions" onClick={(e) => e.stopPropagation()}>
-          <button title="Atualizar" onClick={doRefresh} disabled={loading}>⟳</button>
-          <button title="Novo arquivo" onClick={askNewFile}>+</button>
-          <button title="Nova pasta" onClick={askNewFolder}>⊞</button>
-          {clipboard ? <button title="Colar" onClick={doPaste}>📌</button> : null}
-          <button title="Remover vault" onClick={() => void askRemove()}>✕</button>
+          <button title="Refresh" onClick={doRefresh} disabled={loading}>⟳</button>
+          <button title="New file" onClick={askNewFile}>+</button>
+          <button title="New folder" onClick={askNewFolder}>⊞</button>
+          {clipboard ? <button title="Paste" onClick={doPaste}>📌</button> : null}
+          <button title="Remove vault" onClick={() => void askRemove()}>✕</button>
         </span>
       </div>
       {expanded ? (
         <div className="vault-root-body">
           {loading ? (
-            <p className="tree-empty">Carregando…</p>
+            <p className="tree-empty">Loading…</p>
           ) : !tree || tree.length === 0 ? (
-            <p className="tree-empty">Vazio.</p>
+            <p className="tree-empty">Empty.</p>
           ) : (
             tree.map((n) => (
               <TreeNode key={n.path} vaultId={vault.id} node={n} depth={0} openModal={openModal} vaultPath={vault.path} />

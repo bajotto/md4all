@@ -200,7 +200,7 @@ button {
   white-space: nowrap;
 }
 
-/* ---------- drawer de busca (direita) ---------- */
+/* ---------- search drawer (right) ---------- */
 .search-drawer {
   width: 340px;
   min-width: 280px;
@@ -311,7 +311,7 @@ button {
   cursor: not-allowed;
 }
 
-/* resultados literais agrupados por arquivo */
+/* literal results grouped by file */
 .search-result-file {
   margin-bottom: 10px;
 }
@@ -361,7 +361,7 @@ button {
   white-space: nowrap;
 }
 
-/* busca por AI */
+/* AI search */
 .ai-search-form {
   display: flex;
   gap: 6px;
@@ -667,7 +667,7 @@ button {
   position: relative;
 }
 
-/* ---------- sumário (outline / TOC) ---------- */
+/* ---------- outline (TOC) ---------- */
 .outline-toggle {
   padding: 4px 10px;
   font-size: 12px;
@@ -823,15 +823,15 @@ button {
   font-size: 14px;
 }
 
-/* a UI do Crepe traz seu próprio tema; ajustamos só o container */
+/* Crepe UI brings its own theme; we only adjust the container */
 .milkdown {
   height: 100%;
 }
 
-/* ---------- tema escuro do editor Crepe ----------
-   O Crepe define suas cores em --crepe-color-* no seletor .milkdown.
-   Importamos o tema claro como base (frame.css) e, no modo escuro,
-   sobrescrevemos as variáveis para o editor acompanhar o tema do app. */
+/* ---------- Crepe editor dark theme ----------
+   Crepe defines its colors in --crepe-color-* within the .milkdown selector.
+   We import the light theme as base (frame.css) and, in dark mode,
+   override the variables so the editor follows the app theme. */
 :root[data-theme='dark'] .milkdown {
   --crepe-color-background: #1a1a1a;
   --crepe-color-on-background: #e6e6e6;
@@ -857,13 +857,13 @@ button {
     0px 1px 2px 0px rgba(255, 255, 255, 0.18),
     0px 2px 6px 2px rgba(255, 255, 255, 0.1);
 }
-/* garante que a superfície do editor não fique branca atrás do .milkdown */
+/* ensures the editor surface doesn't stay white behind .milkdown */
 :root[data-theme='dark'] .crepe-host,
 :root[data-theme='dark'] .editor-surface {
   background: var(--bg);
 }
 
-/* ---------- barra Find/Replace ---------- */
+/* ---------- Find/Replace bar ---------- */
 .find-bar {
   border-bottom: 1px solid var(--border);
   background: var(--bg-elev);
@@ -961,7 +961,7 @@ button {
   text-overflow: ellipsis;
 }
 
-/* destaques das ocorrências */
+/* match highlights */
 .cm-search-match {
   background: rgba(255, 200, 0, 0.35);
   border-radius: 2px;
@@ -977,7 +977,7 @@ button {
   background: rgba(255, 150, 0, 0.7);
 }
 
-/* ---------- sidebar multi-raiz ---------- */
+/* ---------- multi-root sidebar ---------- */
 .vault-actions {
   display: flex;
   gap: 8px;
@@ -1057,7 +1057,7 @@ button {
   padding-bottom: 4px;
 }
 
-/* ---------- campos SFTP no modal ---------- */
+/* ---------- SFTP fields in modal ---------- */
 .vault-mode.mode-toggle,
 .auth-toggle.mode-toggle {
   display: flex;
@@ -1103,7 +1103,7 @@ button {
   font-weight: 600;
 }
 
-/* ---------- modal adicionar vault ---------- */
+/* ---------- add vault modal ---------- */
 .modal-box.add-vault {
   min-width: 420px;
 }
@@ -1140,7 +1140,7 @@ button {
   cursor: default;
 }
 
-/* ---------- editor de código (source) ---------- */
+/* ---------- source code editor ---------- */
 .cm-host {
   height: 100%;
   overflow: hidden;
@@ -1166,7 +1166,7 @@ button {
   background: rgba(255, 255, 255, 0.06);
 }
 
-/* ---------- barra de formatação WYSIWYG ---------- */
+/* ---------- WYSIWYG format toolbar ---------- */
 .format-toolbar {
   display: flex;
   align-items: center;
@@ -1219,7 +1219,7 @@ button {
   padding-bottom: 1px;
 }
 
-/* ---------- seletor de cor ---------- */
+/* ---------- color picker ---------- */
 .color-wrap {
   position: relative;
   display: inline-flex;
@@ -1290,7 +1290,7 @@ button {
   color: var(--text);
 }
 
-/* ---------- preview de diagramas mermaid ---------- */
+/* ---------- mermaid diagram preview ---------- */
 .mermaid-preview {
   display: flex;
   justify-content: center;
@@ -1314,7 +1314,7 @@ button {
   white-space: pre-wrap;
 }
 
-/* ---------- tokens PKM no editor (wikilink / tag) ---------- */
+/* ---------- PKM tokens in editor (wikilink / tag) ---------- */
 .wikilink {
   color: var(--accent);
   border-bottom: 1px dashed var(--accent);
@@ -1328,7 +1328,7 @@ button {
   cursor: pointer;
 }
 
-/* ---------- painel de tags na sidebar ---------- */
+/* ---------- tag panel in sidebar ---------- */
 .tag-panel {
   border-top: 1px solid var(--border);
   padding: 8px 12px 12px;
@@ -1416,7 +1416,7 @@ button {
   color: var(--text);
 }
 
-/* ---------- modal de input ---------- */
+/* ---------- input modal ---------- */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -1472,7 +1472,7 @@ button {
   font-size: 13px;
 }
 
-/* ===== Análise de documentação por LLM ===== */
+/* ===== LLM documentation analysis ===== */
 .doc-modal {
   background: var(--bg);
   border: 1px solid var(--border);
@@ -1635,7 +1635,7 @@ button {
   background: var(--bg-side); padding: 1px 5px; border-radius: 4px; font-size: 11px;
 }
 
-/* resumo de uso/custo no rodapé da análise */
+/* usage/cost summary in analysis footer */
 .doc-usage { font-size: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
 .doc-usage > summary { cursor: pointer; padding: 6px 10px; font-weight: 600; }
 .doc-usage-grid { display: flex; flex-direction: column; gap: 3px; padding: 4px 10px 8px; color: var(--text-soft); }
@@ -1645,7 +1645,7 @@ button {
 }
 .doc-usage-grid strong { color: var(--accent); }
 
-/* ===== abas da modal de documentação ===== */
+/* ===== documentation modal tabs ===== */
 .doc-mode-tabs { display: flex; gap: 4px; margin-left: 8px; }
 .doc-mode-tabs button {
   padding: 4px 10px; border: 1px solid var(--border); background: var(--bg);
@@ -1653,7 +1653,7 @@ button {
 }
 .doc-mode-tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 
-/* ===== auditoria (findings) ===== */
+/* ===== audit (findings) ===== */
 .doc-audit, .doc-agents, .doc-rewrite { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .doc-audit-toolbar {
   display: flex; align-items: center; gap: 10px; padding: 8px 12px;
@@ -1707,11 +1707,11 @@ button {
 :root[data-theme='dark'] .doc-verify.verified { background: #16361f; color: #5ad17e; }
 .doc-tree-row input[type='checkbox'] { margin: 0 2px 0 0; }
 
-/* ===== navegador de diretório remoto (SFTP) ===== */
+/* ===== remote directory browser (SFTP) ===== */
 .modal-box.rdir { width: min(520px, 92vw); }
 .modal-box.llm-config { min-width: min(560px, 92vw); }
 
-/* ---------- select de modelos LLM (lista curada) ---------- */
+/* ---------- LLM model select (curated list) ---------- */
 .llm-combobox { position: relative; }
 .llm-select-btn {
   width: 100%;
@@ -1815,10 +1815,10 @@ button {
 .rdir-row:hover { background: var(--accent-soft); }
 .rdir-icon { flex-shrink: 0; }
 
-/* pastas que contêm markdown em algum descendente: destaque por cor */
+/* folders containing markdown in some descendant: color highlight */
 .tree-label.has-md { color: var(--accent); font-weight: 600; }
 
-/* ícone discreto de documento nos arquivos da árvore */
+/* subtle document icon for tree files */
 .tree-file-icon {
   flex-shrink: 0;
   margin-right: 6px;
@@ -1827,6 +1827,6 @@ button {
 }
 .tree-row.file.active .tree-file-icon { color: inherit; opacity: 0.9; }
 
-/* arquivos markdown em azul (acento), fechando a cadeia visual pasta→arquivo */
+/* markdown files in blue (accent), closing the visual folder→file chain */
 .tree-label.is-md { color: var(--accent); }
 .tree-row.file.md .tree-file-icon { color: var(--accent); opacity: 0.85; }

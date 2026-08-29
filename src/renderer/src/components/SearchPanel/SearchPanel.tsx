@@ -3,7 +3,7 @@ import { useStore } from '../../store/useStore'
 import LiteralSearch from './LiteralSearch'
 import AiSearch from './AiSearch'
 
-/** Drawer retrátil na direita: modo Local (só literal) ou Híbrida (literal + AI). */
+/** Collapsible drawer on the right: Local mode (literal only) or Hybrid (literal + AI). */
 export default function SearchPanel(): JSX.Element | null {
   const open = useStore((s) => s.searchPanelOpen)
   const mode = useStore((s) => s.searchMode)
@@ -22,12 +22,12 @@ export default function SearchPanel(): JSX.Element | null {
   const inputRef = useRef<HTMLInputElement>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // foca no input sempre que o painel abre
+  // focuses the input whenever the panel opens
   useEffect(() => {
     if (open) inputRef.current?.focus()
   }, [open])
 
-  // busca literal com debounce de 250ms; limpa resultados AI se query mudar
+  // literal search with 250ms debounce; clears AI results if query changes
   useEffect(() => {
     if (timer.current) clearTimeout(timer.current)
     if (!query.trim()) {
@@ -44,7 +44,7 @@ export default function SearchPanel(): JSX.Element | null {
 
   if (!open) return null
 
-  // Híbrida exige LLM configurada: sem chave, abre o modal ⚙ (onboarding) em vez de trocar modo
+  // Hybrid requires configured LLM: without a key, opens the ⚙ modal (onboarding) instead of switching mode
   const onHibrida = (): void => {
     if (!llmConfigured) {
       setLlmSettingsOpen(true)
@@ -56,7 +56,7 @@ export default function SearchPanel(): JSX.Element | null {
   return (
     <aside className="search-drawer">
       <div className="search-drawer-head">
-        <div className="search-mode-toggle" role="group" aria-label="Modo de busca">
+        <div className="search-mode-toggle" role="group" aria-label="Search mode">
           <button
             className={mode === 'local' ? 'active' : ''}
             onClick={() => setMode('local')}
@@ -65,13 +65,13 @@ export default function SearchPanel(): JSX.Element | null {
           </button>
           <button
             className={mode === 'hibrida' ? 'active' : ''}
-            title={llmConfigured ? 'Busca híbrida (literal + AI)' : 'Configure sua chave OpenRouter (⚙)'}
+            title={llmConfigured ? 'Hybrid search (literal + AI)' : 'Configure your OpenRouter key (⚙)'}
             onClick={onHibrida}
           >
-            Híbrida
+            Hybrid
           </button>
         </div>
-        <button className="search-drawer-close" onClick={close} title="Fechar busca">
+        <button className="search-drawer-close" onClick={close} title="Close search">
           ✕
         </button>
       </div>
@@ -79,7 +79,7 @@ export default function SearchPanel(): JSX.Element | null {
         ref={inputRef}
         className="search-input"
         type="search"
-        placeholder={mode === 'local' ? 'Buscar texto em todos os vaults…' : 'O que você procura?'}
+        placeholder={mode === 'local' ? 'Search text across all vaults…' : 'What are you looking for?'}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={(e) => {

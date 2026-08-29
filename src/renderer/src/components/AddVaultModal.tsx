@@ -16,7 +16,7 @@ export default function AddVaultModal({ onClose }: Props): JSX.Element {
   const [busy, setBusy] = useState(false)
   const [testMsg, setTestMsg] = useState<string | null>(null)
   const [browsing, setBrowsing] = useState(false)
-  // guard síncrono contra double-submit (estado `busy` atualiza tarde demais p/ clique duplo)
+  // synchronous guard against double-submit (`busy` state updates too late for double-click)
   const submitting = useRef(false)
 
   // local
@@ -63,7 +63,7 @@ export default function AddVaultModal({ onClose }: Props): JSX.Element {
     setTestMsg(null)
     try {
       await window.api.testSftp(buildInput())
-      setTestMsg('✓ Conexão OK')
+      setTestMsg('✓ Connection OK')
     } catch (err) {
       setTestMsg('✗ ' + (err instanceof Error ? err.message : String(err)))
     } finally {
@@ -100,7 +100,7 @@ export default function AddVaultModal({ onClose }: Props): JSX.Element {
         />
       ) : null}
       <div className="modal-box add-vault" onClick={(e) => e.stopPropagation()}>
-        <p className="modal-title">Adicionar vault</p>
+        <p className="modal-title">Add vault</p>
 
         <div className="mode-toggle vault-mode">
           <button className={mode === 'local' ? 'active' : ''} onClick={() => setMode('local')}>
@@ -114,12 +114,12 @@ export default function AddVaultModal({ onClose }: Props): JSX.Element {
         {mode === 'local' ? (
           <>
             <p className="modal-help">
-              Pasta no disco, share SMB montado (<code>/Volumes/meu-share</code>) ou iCloud Drive.
+              Folder on disk, mounted SMB share (<code>/Volumes/my-share</code>) or iCloud Drive.
             </p>
             <input
               className="modal-input"
               value={path}
-              placeholder="/caminho/para/a/pasta"
+              placeholder="/path/to/folder"
               onChange={(e) => setPath(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') void submit()
@@ -127,46 +127,46 @@ export default function AddVaultModal({ onClose }: Props): JSX.Element {
               }}
             />
             <div className="add-vault-shortcuts">
-              <button onClick={() => void pickFolder()}>📁 Escolher pasta…</button>
+              <button onClick={() => void pickFolder()}>📁 Choose folder…</button>
               <button onClick={() => void fillIcloud()}>☁️ iCloud Drive</button>
             </div>
           </>
         ) : (
           <>
-            <input className="modal-input" placeholder="Nome (opcional)" value={name} onChange={(e) => setName(e.target.value)} />
+            <input className="modal-input" placeholder="Name (optional)" value={name} onChange={(e) => setName(e.target.value)} />
             <div className="field-row">
-              <input className="modal-input flex2" placeholder="Host (ex.: 0.0.0.0)" value={host} onChange={(e) => setHost(e.target.value)} />
-              <input className="modal-input flex1" placeholder="Porta" value={port} onChange={(e) => setPort(e.target.value)} />
+              <input className="modal-input flex2" placeholder="Host (e.g. 0.0.0.0)" value={host} onChange={(e) => setHost(e.target.value)} />
+              <input className="modal-input flex1" placeholder="Port" value={port} onChange={(e) => setPort(e.target.value)} />
             </div>
-            <input className="modal-input" placeholder="Usuário" value={username} onChange={(e) => setUsername(e.target.value)} />
+            <input className="modal-input" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
 
             <div className="mode-toggle auth-toggle">
-              <button className={auth === 'password' ? 'active' : ''} onClick={() => setAuth('password')}>Senha</button>
-              <button className={auth === 'key' ? 'active' : ''} onClick={() => setAuth('key')}>Chave / Certificado</button>
+              <button className={auth === 'password' ? 'active' : ''} onClick={() => setAuth('password')}>Password</button>
+              <button className={auth === 'key' ? 'active' : ''} onClick={() => setAuth('key')}>Key / Certificate</button>
             </div>
 
             {auth === 'password' ? (
-              <input className="modal-input" type="password" placeholder="Senha" value={password} onChange={(e) => setPassword(e.target.value)} />
+              <input className="modal-input" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
             ) : (
               <>
                 <div className="field-row">
-                  <input className="modal-input flex2" placeholder="Caminho da chave privada (.pem, id_rsa)" value={keyPath} onChange={(e) => setKeyPath(e.target.value)} />
-                  <button className="inline-btn" onClick={() => void pickKey()}>Procurar…</button>
+                  <input className="modal-input flex2" placeholder="Private key path (.pem, id_rsa)" value={keyPath} onChange={(e) => setKeyPath(e.target.value)} />
+                  <button className="inline-btn" onClick={() => void pickKey()}>Browse…</button>
                 </div>
-                <input className="modal-input" type="password" placeholder="Passphrase da chave (se houver)" value={passphrase} onChange={(e) => setPassphrase(e.target.value)} />
+                <input className="modal-input" type="password" placeholder="Key passphrase (if any)" value={passphrase} onChange={(e) => setPassphrase(e.target.value)} />
               </>
             )}
 
             <div className="field-row">
-              <input className="modal-input flex2" placeholder="Pasta raiz remota (ex.: /home/user/notas ou .)" value={rootPath} onChange={(e) => setRootPath(e.target.value)} />
-              <button className="inline-btn" disabled={!sftpValid || busy} onClick={() => setBrowsing(true)} title="Navegar no servidor">
-                📁 Procurar…
+              <input className="modal-input flex2" placeholder="Remote root folder (e.g. /home/user/notes or .)" value={rootPath} onChange={(e) => setRootPath(e.target.value)} />
+              <button className="inline-btn" disabled={!sftpValid || busy} onClick={() => setBrowsing(true)} title="Browse server">
+                📁 Browse…
               </button>
             </div>
 
             <div className="add-vault-shortcuts">
               <button disabled={!sftpValid || busy} onClick={() => void testSftp()}>
-                {busy ? '…' : '🔌 Testar conexão'}
+                {busy ? '…' : '🔌 Test connection'}
               </button>
               {testMsg ? <span className={`test-msg ${testMsg.startsWith('✓') ? 'ok' : 'err'}`}>{testMsg}</span> : null}
             </div>
@@ -174,13 +174,13 @@ export default function AddVaultModal({ onClose }: Props): JSX.Element {
         )}
 
         <div className="modal-actions">
-          <button className="modal-btn-cancel" onClick={onClose}>Cancelar</button>
+          <button className="modal-btn-cancel" onClick={onClose}>Cancel</button>
           <button
             className="modal-btn-ok"
             disabled={busy || (mode === 'local' ? !path.trim() : !sftpValid)}
             onClick={() => void submit()}
           >
-            {busy ? 'Conectando…' : 'Adicionar'}
+            {busy ? 'Connecting…' : 'Add'}
           </button>
         </div>
       </div>

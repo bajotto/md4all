@@ -18,13 +18,13 @@ import type {
 
 const DOC_EXTS = new Set(['.md', '.markdown', '.mdown', '.mkd', '.txt'])
 
-/** Caminho é de documentação? (trava de segurança: nunca tocar código no apply) */
+/** Is the path a documentation file? (safety guard: never touch code in apply) */
 function isDocPath(p: string): boolean {
   const i = p.lastIndexOf('.')
   return i !== -1 && DOC_EXTS.has(p.slice(i).toLowerCase())
 }
 
-// orçamento de contexto (caracteres ~ 4 chars/token)
+// context budget (characters ~ 4 chars/token)
 const PER_FILE_MAX = 16_000
 const TOTAL_MAX = 360_000
 
@@ -37,7 +37,7 @@ interface FileBlob {
 
 function truncate(s: string, max: number): string {
   if (s.length <= max) return s
-  return s.slice(0, max) + `\n…[truncado: ${s.length - max} caracteres omitidos]`
+  return s.slice(0, max) + `\n…[truncated: ${s.length - max} characters omitted]`
 }
 
 async function collectBlobs(
@@ -52,7 +52,7 @@ async function collectBlobs(
       const content = await readFile(vaultId, p)
       blobs.push({ path: p, content: truncate(content, perFileMax) })
     } catch {
-      /* arquivo ilegível: ignora */
+      /* unreadable file: ignore */
     }
   }
   return blobs
@@ -70,59 +70,59 @@ function renderBlobs(blobs: FileBlob[]): string {
   return blobs.map((b) => `### ${b.path}\n\`\`\`\n${b.content}\n\`\`\``).join('\n\n')
 }
 
-// ---------------- prompts (anti-alucinação, foco em instruir LLMs) ----------------
+// ---------------- prompts (anti-hallucination, focused on instructing LLMs) ----------------
 
-const SYSTEM_DOC = `Você é um arquiteto de documentação técnica especializado em produzir docs que SERVEM PARA INSTRUIR OUTRAS LLMs sobre um codebase, com máxima precisão e zero alucinação.
+const SYSTEM_DOC = `You are a technical documentation architect specialized in producing docs that SERVE TO INSTRUCT OTHER LLMs about a codebase, with maximum precision and zero hallucination.
 
-Princípios inegociáveis:
-- NUNCA invente APIs, arquivos, funções, comandos, flags ou comportamentos. Toda afirmação técnica deve ser rastreável ao CÓDIGO fornecido.
-- Quando algo não puder ser confirmado no código, marque explicitamente como "não verificado" em vez de afirmar.
-- Escreva de forma objetiva, sem floreio, sem ambiguidade, sem marketing. Frases curtas e diretas.
-- Cite caminhos reais do repositório como âncora factual (ex.: src/main/ipc.ts), e referências a linha quando souber (path:linha).
-- Estrutura canônica por documento: Propósito · Escopo · Pontos de entrada (com paths) · Invariantes/contratos · Exemplos verificáveis · Pegadinhas conhecidas.
-- Prefira poucos documentos coesos a muitos fragmentados; elimine duplicação; resolva contradições de forma factual com base no código.
-- O conteúdo gerado deve reduzir alucinação de LLMs futuras: explícito sobre o que é garantido vs. o que é suposição.`
+Non-negotiable principles:
+- NEVER invent APIs, files, functions, commands, flags or behaviors. Every technical claim must be traceable to the provided CODE.
+- When something cannot be confirmed in the code, explicitly mark it as "unverified" rather than asserting it.
+- Write objectively, without embellishment, without ambiguity, without marketing. Short and direct sentences.
+- Cite real repository paths as factual anchors (e.g., src/main/ipc.ts), and line references when known (path:line).
+- Canonical structure per document: Purpose · Scope · Entry points (with paths) · Invariants/contracts · Verifiable examples · Known pitfalls.
+- Prefer few cohesive documents over many fragmented ones; eliminate duplication; resolve contradictions factually based on the code.
+- The generated content should reduce hallucination in future LLMs: explicit about what is guaranteed vs. what is an assumption.`
 
 function buildAnalysisUserMessage(docs: FileBlob[], code: FileBlob[]): string {
-  return `Abaixo está a DOCUMENTAÇÃO atual (.md/.txt) e o CÓDIGO-FONTE do mesmo repositório.
+  return `Below is the current DOCUMENTATION (.md/.txt) and the SOURCE CODE of the same repository.
 
-Tarefas:
-1. Entenda o contexto de toda a documentação.
-2. Avalie a documentação entre si: coesão, contradições e repetições.
-3. Cruze a documentação com o código real e aponte divergências (doc afirma algo que o código não confirma).
-4. Proponha uma nova ESTRUTURA de documentação otimizada para instruir LLMs sem alucinação, seguindo os princípios do sistema.
+Tasks:
+1. Understand the context of all the documentation.
+2. Evaluate the documentation against itself: cohesion, contradictions and repetitions.
+3. Cross-reference the documentation with the actual code and point out divergences (doc claims something the code does not confirm).
+4. Propose a new documentation STRUCTURE optimized to instruct LLMs without hallucination, following the system principles.
 
-Responda APENAS com um objeto JSON com exatamente este formato:
+Respond ONLY with a JSON object with exactly this format:
 {
-  "coherence": [string],        // observações sobre coesão geral
-  "contradictions": [string],   // contradições entre documentos
-  "duplications": [string],     // conteúdos repetidos/redundantes
-  "codeMismatches": [ { "doc": string, "claim": string, "evidence": "path:linha ou descrição" } ],
-  "proposedTree": [ { "path": "pasta/arquivo.md", "content": "markdown completo", "rationale": "por que", "status": "created|updated|unchanged|removed" } ]
+  "coherence": [string],        // observations about overall cohesion
+  "contradictions": [string],   // contradictions between documents
+  "duplications": [string],     // repeated/redundant content
+  "codeMismatches": [ { "doc": string, "claim": string, "evidence": "path:line or description" } ],
+  "proposedTree": [ { "path": "folder/file.md", "content": "full markdown", "rationale": "why", "status": "created|updated|unchanged|removed" } ]
 }
 
-Regras do proposedTree (CRÍTICAS):
-- proposedTree contém SOMENTE arquivos de DOCUMENTAÇÃO (.md). NUNCA inclua arquivos de código-fonte (.ts, .js, .py, etc.) — o código é apenas referência para você verificar a doc.
-- CORRIJA o conteúdo: todo documento com contradição, divergência doc↔código ou duplicação deve vir com status "updated" e o "content" já reescrito de forma factual e correta (baseado no código real). Só use "unchanged" para documentos genuinamente corretos e sem redundância.
-- Liste TODO o conjunto final de documentos (inclua os "unchanged" com seu conteúdo atual).
-- Use "removed" (content vazio) para documentos atuais que devem deixar de existir (ex.: duplicados absorvidos por outro).
-- "content" deve ser markdown final, pronto para gravar, sem placeholders.
+Rules for proposedTree (CRITICAL):
+- proposedTree contains ONLY documentation files (.md). NEVER include source code files (.ts, .js, .py, etc.) — the code is only reference for you to verify the docs.
+- CORRECT the content: every document with a contradiction, doc↔code divergence or duplication must come with status "updated" and the "content" already rewritten factually and correctly (based on the real code). Only use "unchanged" for documents that are genuinely correct and non-redundant.
+- List ALL of the final document set (include "unchanged" ones with their current content).
+- Use "removed" (empty content) for current documents that should no longer exist (e.g., duplicates absorbed by another).
+- "content" must be final markdown, ready to save, without placeholders.
 
-=== DOCUMENTAÇÃO ATUAL ===
-${docs.length ? renderBlobs(docs) : '(nenhum documento encontrado)'}
+=== CURRENT DOCUMENTATION ===
+${docs.length ? renderBlobs(docs) : '(no documents found)'}
 
-=== CÓDIGO-FONTE ===
-${code.length ? renderBlobs(code) : '(nenhum arquivo de código encontrado)'}`
+=== SOURCE CODE ===
+${code.length ? renderBlobs(code) : '(no code files found)'}`
 }
 
-/** Resume um arquivo de código num parágrafo factual (usado quando o contexto estoura). */
+/** Summarizes a code file into a factual paragraph (used when context overflows). */
 async function summarizeCode(model: string, blob: FileBlob, acc: LlmUsage): Promise<FileBlob> {
   try {
     const { content, usage } = await chat(
       model,
       [
-        { role: 'system', content: 'Resuma o arquivo em até 6 linhas factuais: exportações públicas, responsabilidades e contratos. Sem inventar.' },
-        { role: 'user', content: `Arquivo ${blob.path}:\n\n${blob.content}` }
+        { role: 'system', content: 'Summarize the file in up to 6 factual lines: public exports, responsibilities and contracts. Do not invent.' },
+        { role: 'user', content: `File ${blob.path}:\n\n${blob.content}` }
       ],
       { temperature: 0, maxTokens: 400 }
     )
@@ -143,8 +143,8 @@ async function fitContext(
   const size = (bs: FileBlob[]): number => bs.reduce((n, b) => n + b.content.length, 0)
   if (size(docs) + size(code) <= TOTAL_MAX) return { docs, code }
 
-  onProgress('Contexto grande: resumindo arquivos de código…', 30)
-  // resume o código em paralelo (concorrência limitada)
+  onProgress('Large context: summarizing code files…', 30)
+  // summarizes code in parallel (limited concurrency)
   const summarized: FileBlob[] = []
   const CONC = 4
   for (let i = 0; i < code.length; i += CONC) {
@@ -154,18 +154,18 @@ async function fitContext(
   return { docs, code: summarized }
 }
 
-// ---------------- análise ----------------
+// ---------------- analysis ----------------
 export async function analyze(vaultId: string, onProgress: Progress = () => {}): Promise<AnalyzeResult> {
   const { primary } = getModels()
   const usage = emptyUsage()
-  onProgress('Lendo documentação do vault…', 5)
+  onProgress('Reading vault documentation…', 5)
   const docs = await collectDocs(vaultId)
-  onProgress('Lendo código-fonte do vault…', 15)
+  onProgress('Reading vault source code…', 15)
   const code = await collectCode(vaultId)
 
   const fitted = await fitContext(primary, docs, code, onProgress, usage)
 
-  onProgress('Analisando coesão, contradições e doc↔código…', 50)
+  onProgress('Analyzing cohesion, contradictions and doc↔code…', 50)
   const messages: ChatMessage[] = [
     { role: 'system', content: SYSTEM_DOC },
     { role: 'user', content: buildAnalysisUserMessage(fitted.docs, fitted.code) }
@@ -176,7 +176,7 @@ export async function analyze(vaultId: string, onProgress: Progress = () => {}):
   })
   addUsage(usage, u)
 
-  // normaliza: garante arrays e tipos corretos (o modelo pode devolver formatos imprevistos)
+  // normalize: ensures correct arrays and types (the model may return unexpected formats)
   const toStrArray = (v: unknown): string[] =>
     (Array.isArray(v) ? v : v == null ? [] : [v]).map((x) =>
       typeof x === 'string' ? x : JSON.stringify(x)
@@ -203,11 +203,11 @@ export async function analyze(vaultId: string, onProgress: Progress = () => {}):
           : 'updated'
       }))
   }
-  onProgress('Análise concluída.', 70)
+  onProgress('Analysis complete.', 70)
   return { report: clean, usage, stats: { docCount: docs.length, codeCount: code.length } }
 }
 
-// ---------------- revisão de fallback (2ª LLM) ----------------
+// ---------------- fallback review (2nd LLM) ----------------
 export async function reviewProposal(
   vaultId: string,
   report: AnalysisReport,
@@ -215,7 +215,7 @@ export async function reviewProposal(
 ): Promise<ReviewOutcome> {
   const { reviewer } = getModels()
   const usage = emptyUsage()
-  onProgress('Revisão de fallback (2ª LLM)…', 80)
+  onProgress('Fallback review (2nd LLM)…', 80)
   const code = await collectCode(vaultId)
   const fitted = await fitContext(reviewer, [], code, onProgress, usage)
 
@@ -228,21 +228,21 @@ export async function reviewProposal(
     {
       role: 'system',
       content:
-        'Você é um revisor adversarial. Sua função é PEGAR alucinações e imprecisões. Verifique se a documentação proposta afirma algo que o código não confirma ou que é tecnicamente incorreto. Seja cético.'
+        'You are an adversarial reviewer. Your job is to CATCH hallucinations and inaccuracies. Check whether the proposed documentation claims something the code does not confirm or that is technically incorrect. Be skeptical.'
     },
     {
       role: 'user',
-      content: `Compare a DOCUMENTAÇÃO PROPOSTA com o CÓDIGO. Responda APENAS JSON:
+      content: `Compare the PROPOSED DOCUMENTATION with the CODE. Respond ONLY with JSON:
 { "approved": boolean, "blocking": [string], "notes": [string] }
-- "blocking": problemas que IMPEDEM aplicar (afirmações falsas/alucinadas, contradição com o código).
-- "notes": observações menores.
-- "approved" = true somente se "blocking" estiver vazio.
+- "blocking": problems that PREVENT applying (false/hallucinated claims, contradiction with the code).
+- "notes": minor observations.
+- "approved" = true only if "blocking" is empty.
 
-=== DOCUMENTAÇÃO PROPOSTA ===
-${proposal || '(vazia)'}
+=== PROPOSED DOCUMENTATION ===
+${proposal || '(empty)'}
 
-=== CÓDIGO-FONTE ===
-${fitted.code.length ? renderBlobs(fitted.code) : '(nenhum)'}`
+=== SOURCE CODE ===
+${fitted.code.length ? renderBlobs(fitted.code) : '(none)'}`
     }
   ]
   const { value: result, usage: u } = await chatJson<ReviewResult>(reviewer, messages, {
@@ -256,41 +256,41 @@ ${fitted.code.length ? renderBlobs(fitted.code) : '(nenhum)'}`
     approved: false
   }
   review.approved = review.blocking.length === 0
-  onProgress('Revisão concluída.', 95)
+  onProgress('Review complete.', 95)
   return { review, usage }
 }
 
-// ================= AUDITORIA GROUNDED (findings com âncoras) =================
+// ================= GROUNDED AUDIT (findings with anchors) =================
 
-const SYSTEM_AUDIT = `Você é um auditor de documentação técnica. Seu trabalho é encontrar problemas REAIS na documentação cruzando-a com o código-fonte, com ZERO alucinação.
+const SYSTEM_AUDIT = `You are a technical documentation auditor. Your job is to find REAL problems in the documentation by cross-referencing it with the source code, with ZERO hallucination.
 
-Regras inegociáveis:
-- Todo achado (finding) DEVE vir com ao menos uma âncora: { path, quote } onde "quote" é um TRECHO LITERAL copiado exatamente do código fornecido (e não da doc). Sem âncora literal verificável, NÃO reporte o achado.
-- Não invente arquivos, símbolos ou linhas. Se não houver evidência no código, não afirme.
-- Foque em problemas que prejudicam quem (humano ou LLM) usa a doc: divergência doc↔código, contradição entre docs, duplicação, doc obsoleta, e API pública sem documentação.
-- Seja específico e objetivo. "claim" descreve o problema; "suggestedFix" diz a correção factual.`
+Non-negotiable rules:
+- Every finding MUST come with at least one anchor: { path, quote } where "quote" is a LITERAL excerpt copied exactly from the provided code (not from the doc). Without a verifiable literal anchor, DO NOT report the finding.
+- Do not invent files, symbols or lines. If there is no evidence in the code, do not assert.
+- Focus on problems that harm anyone (human or LLM) using the docs: doc↔code divergence, contradiction between docs, duplication, stale docs, and undocumented public API.
+- Be specific and objective. "claim" describes the problem; "suggestedFix" states the factual correction.`
 
 function buildAuditUserMessage(docs: FileBlob[], code: FileBlob[]): string {
-  return `Audite a DOCUMENTAÇÃO contra o CÓDIGO. Responda APENAS com JSON:
+  return `Audit the DOCUMENTATION against the CODE. Respond ONLY with JSON:
 {
   "findings": [
     {
       "kind": "doc_code_mismatch | contradiction | duplication | undocumented | stale",
       "severity": "high | medium | low",
-      "doc": "caminho/do/arquivo.md ou null",
-      "claim": "descrição objetiva do problema",
-      "anchors": [ { "path": "src/...", "quote": "TRECHO LITERAL do código", "symbol": "opcional", "line": 0 } ],
-      "suggestedFix": "correção factual sugerida"
+      "doc": "path/to/file.md or null",
+      "claim": "objective description of the problem",
+      "anchors": [ { "path": "src/...", "quote": "LITERAL excerpt from the code", "symbol": "optional", "line": 0 } ],
+      "suggestedFix": "suggested factual correction"
     }
   ]
 }
-Lembre: cada finding precisa de pelo menos uma âncora cujo "quote" seja copiado LITERALMENTE do código abaixo. Findings sem âncora literal serão descartados.
+Remember: each finding needs at least one anchor whose "quote" is copied LITERALLY from the code below. Findings without a literal anchor will be discarded.
 
-=== DOCUMENTAÇÃO ATUAL ===
-${docs.length ? renderBlobs(docs) : '(nenhum documento encontrado)'}
+=== CURRENT DOCUMENTATION ===
+${docs.length ? renderBlobs(docs) : '(no documents found)'}
 
-=== CÓDIGO-FONTE ===
-${code.length ? renderBlobs(code) : '(nenhum arquivo de código encontrado)'}`
+=== SOURCE CODE ===
+${code.length ? renderBlobs(code) : '(no code files found)'}`
 }
 
 const FINDING_KINDS: FindingKind[] = [
@@ -334,37 +334,37 @@ function normalizeFindings(raw: unknown): Finding[] {
   })
 }
 
-/** Revisão adversarial: o revisor tenta REFUTAR cada finding citando o código. */
+/** Adversarial review: the reviewer tries to REFUTE each finding by citing the code. */
 async function reviewFindings(
   reviewer: string,
   findings: Finding[],
   code: FileBlob[],
   usage: LlmUsage
 ): Promise<Finding[]> {
-  // só vale refutar o que foi verificado por âncora
+  // only worth refuting what was verified by anchor
   const toReview = findings.filter((f) => f.verify === 'verified')
   if (!toReview.length) return findings
 
   const list = toReview
-    .map((f) => `- id ${f.id}: ${f.claim}\n  âncoras: ${f.anchors.map((a) => `${a.path} «${a.quote.slice(0, 80)}»`).join(' | ')}`)
+    .map((f) => `- id ${f.id}: ${f.claim}\n  anchors: ${f.anchors.map((a) => `${a.path} «${a.quote.slice(0, 80)}»`).join(' | ')}`)
     .join('\n')
 
   const messages: ChatMessage[] = [
     {
       role: 'system',
       content:
-        'Você é um revisor adversarial cético. Para cada finding, tente REFUTÁ-LO consultando o código. Refute (refuted=true) apenas se o código CONTRADIZ o finding ou se a âncora não sustenta a afirmação. Na dúvida, refuted=false.'
+        'You are a skeptical adversarial reviewer. For each finding, try to REFUTE it by consulting the code. Refute (refuted=true) only if the code CONTRADICTS the finding or if the anchor does not support the claim. When in doubt, refuted=false.'
     },
     {
       role: 'user',
-      content: `Para cada finding abaixo, responda se ele se sustenta no código. JSON APENAS:
-{ "verdicts": [ { "id": "f1", "refuted": false, "citation": "path:linha ou trecho que justifica" } ] }
+      content: `For each finding below, respond whether it holds up against the code. JSON ONLY:
+{ "verdicts": [ { "id": "f1", "refuted": false, "citation": "path:line or excerpt that justifies" } ] }
 
 === FINDINGS ===
 ${list}
 
-=== CÓDIGO-FONTE ===
-${code.length ? renderBlobs(code) : '(nenhum)'}`
+=== SOURCE CODE ===
+${code.length ? renderBlobs(code) : '(none)'}`
     }
   ]
   const { value, usage: u } = await chatJson<{ verdicts?: unknown[] }>(reviewer, messages, {
@@ -389,13 +389,13 @@ const SEV_ORDER: Record<Severity, number> = { high: 0, medium: 1, low: 2 }
 export async function audit(vaultId: string, onProgress: Progress = () => {}): Promise<AuditReport> {
   const { primary, reviewer } = getModels()
   const usage = emptyUsage()
-  onProgress('Lendo documentação do vault…', 5)
+  onProgress('Reading vault documentation…', 5)
   const docs = await collectDocs(vaultId)
-  onProgress('Lendo código-fonte do vault…', 15)
+  onProgress('Reading vault source code…', 15)
   const code = await collectCode(vaultId)
   const fitted = await fitContext(primary, docs, code, onProgress, usage)
 
-  onProgress('Auditando doc↔código…', 45)
+  onProgress('Auditing doc↔code…', 45)
   const { value, usage: u } = await chatJson<{ findings?: unknown[] }>(
     primary,
     [
@@ -407,13 +407,13 @@ export async function audit(vaultId: string, onProgress: Progress = () => {}): P
   addUsage(usage, u)
   let findings = normalizeFindings(value)
 
-  onProgress('Verificando âncoras no código…', 65)
+  onProgress('Verifying anchors in the code…', 65)
   findings = await verifyFindings(vaultId, findings)
 
-  onProgress('Revisão adversarial (2ª LLM refuta)…', 80)
+  onProgress('Adversarial review (2nd LLM refutes)…', 80)
   findings = await reviewFindings(reviewer, findings, fitted.code, usage)
 
-  // ordena por severidade depois por estado de verificação
+  // sort by severity then by verification state
   const stateRank = (s: Finding['verify']): number => (s === 'verified' ? 0 : s === 'unverified' ? 1 : 2)
   findings.sort((a, b) => SEV_ORDER[a.severity] - SEV_ORDER[b.severity] || stateRank(a.verify) - stateRank(b.verify))
 
@@ -424,19 +424,19 @@ export async function audit(vaultId: string, onProgress: Progress = () => {}): P
     unverified: findings.filter((f) => f.verify === 'unverified').length,
     refuted: findings.filter((f) => f.verify === 'refuted').length
   }
-  onProgress('Auditoria concluída.', 100)
+  onProgress('Audit complete.', 100)
   return { findings, usage, stats }
 }
 
-// ================= GERADOR DE AGENTS.md (fatos + camada curada) =================
+// ================= AGENTS.md GENERATOR (facts + curated layer) =================
 
-const SYSTEM_AGENTS = `Você escreve um arquivo AGENTS.md: contexto conciso para um agente de código (LLM) trabalhar neste repositório com segurança e sem alucinar.
+const SYSTEM_AGENTS = `You write an AGENTS.md file: concise context for a code agent (LLM) to work in this repository safely and without hallucinating.
 
-Regras:
-- Use APENAS o que está no código fornecido e nos fatos extraídos. NÃO invente.
-- Cada afirmação não-óbvia deve terminar com uma âncora entre colchetes: [src: caminho/arquivo]. Use caminhos reais do repositório.
-- Seções: Visão geral · Arquitetura (camadas e responsabilidades, com paths) · Convenções · Invariantes/contratos · Pegadinhas conhecidas.
-- Objetivo, curto, sem marketing. Não repita o bloco de fatos determinísticos (ele será concatenado à parte).`
+Rules:
+- Use ONLY what is in the provided code and extracted facts. DO NOT invent.
+- Every non-obvious claim must end with a bracketed anchor: [src: path/file]. Use real repository paths.
+- Sections: Overview · Architecture (layers and responsibilities, with paths) · Conventions · Invariants/contracts · Known pitfalls.
+- Objective, short, no marketing. Do not repeat the deterministic facts block (it will be concatenated separately).`
 
 export async function generateAgentsContext(
   vaultId: string,
@@ -446,40 +446,40 @@ export async function generateAgentsContext(
   const { primary } = getModels()
   const usage = emptyUsage()
 
-  onProgress('Extraindo fatos determinísticos do repositório…', 10)
+  onProgress('Extracting deterministic facts from the repository…', 10)
   const facts = await collectRepoFacts(vaultId)
   const factsBlock = renderFactsBlock(facts)
 
-  onProgress('Lendo código-fonte…', 30)
+  onProgress('Reading source code…', 30)
   const code = await collectCode(vaultId)
   const fitted = await fitContext(primary, [], code, onProgress, usage)
 
-  onProgress('Gerando camada curada (com âncoras)…', 60)
+  onProgress('Generating curated layer (with anchors)…', 60)
   const { content: curated, usage: u } = await chat(
     primary,
     [
       { role: 'system', content: SYSTEM_AGENTS },
       {
         role: 'user',
-        content: `Fatos já extraídos (NÃO repita, apenas use como referência):\n${factsBlock}\n\n=== CÓDIGO-FONTE ===\n${fitted.code.length ? renderBlobs(fitted.code) : '(nenhum)'}\n\nEscreva a camada curada do AGENTS.md em markdown (sem repetir os fatos).`
+        content: `Already extracted facts (DO NOT repeat, just use as reference):\n${factsBlock}\n\n=== SOURCE CODE ===\n${fitted.code.length ? renderBlobs(fitted.code) : '(none)'}\n\nWrite the curated layer of the AGENTS.md in markdown (without repeating the facts).`
       }
     ],
     { temperature: 0.2, maxTokens: 6_000 }
   )
   addUsage(usage, u)
 
-  const content = `${factsBlock}\n\n<!-- CAMADA CURADA (gerada por LLM, com âncoras [src: …]) -->\n\n${curated.trim()}\n`
-  onProgress('Contexto do agente gerado.', 100)
+  const content = `${factsBlock}\n\n<!-- CURATED LAYER (generated by LLM, with anchors [src: …]) -->\n\n${curated.trim()}\n`
+  onProgress('Agent context generated.', 100)
   return { content, targetPath, usage, factCount: facts.count }
 }
 
-// ---------------- aplicação: backup + merge incremental ----------------
+// ---------------- application: backup + incremental merge ----------------
 function backupDirName(): string {
   const ts = new Date().toISOString().replace(/[:.]/g, '-')
   return `_backup_${ts}`
 }
 
-/** Grava o AGENTS.md, fazendo backup do anterior se existir. */
+/** Writes the AGENTS.md, backing up the previous one if it exists. */
 export async function applyAgents(
   vaultId: string,
   targetPath: string,
@@ -491,32 +491,32 @@ export async function applyAgents(
     backup = `${backupDirName()}/${targetPath}`
     await writeFile(vaultId, backup, prev)
   } catch {
-    /* não existia: sem backup */
+    /* did not exist: no backup */
   }
   await writeFile(vaultId, targetPath, content)
   return { backup, path: targetPath }
 }
 
-// ================= EXPORT / IMPORT PARA LLM EXTERNA =================
+// ================= EXPORT / IMPORT FOR EXTERNAL LLM =================
 
 /**
- * Grava o prompt de auditoria num arquivo de texto no vault.
- * O usuário cola o conteúdo na LLM externa e importa o JSON de resposta.
+ * Writes the audit prompt to a text file in the vault.
+ * The user pastes the content into the external LLM and imports the response JSON.
  */
 export async function buildAuditPromptExport(vaultId: string): Promise<string> {
   const docs = await collectDocs(vaultId)
   const code = await collectCode(vaultId)
   const ts = new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', '-')
   const content = [
-    '<!-- PROMPT DE AUDITORIA gerado pelo md4all -->',
-    '<!-- 1. Copie TODO este texto e cole no chat da sua LLM (ex.: Claude.ai, ChatGPT). -->',
-    '<!-- 2. A LLM retornará um JSON. Salve-o como arquivo .json. -->',
-    '<!-- 3. Importe o .json em md4all via "Importar resultado". -->',
+    '<!-- AUDIT PROMPT generated by md4all -->',
+    '<!-- 1. Copy ALL this text and paste it into your LLM chat (e.g., Claude.ai, ChatGPT). -->',
+    '<!-- 2. The LLM will return a JSON. Save it as a .json file. -->',
+    '<!-- 3. Import the .json into md4all via "Import result". -->',
     '',
-    '=== INSTRUÇÃO DO SISTEMA ===',
+    '=== SYSTEM INSTRUCTION ===',
     SYSTEM_AUDIT,
     '',
-    '=== MENSAGEM ===',
+    '=== MESSAGE ===',
     buildAuditUserMessage(docs, code)
   ].join('\n')
   const path = `docs/_prompt_audit_${ts}.txt`
@@ -524,21 +524,21 @@ export async function buildAuditPromptExport(vaultId: string): Promise<string> {
   return path
 }
 
-/** Grava o prompt de análise/reescrita num arquivo de texto no vault. */
+/** Writes the analysis/rewrite prompt to a text file in the vault. */
 export async function buildAnalyzePromptExport(vaultId: string): Promise<string> {
   const docs = await collectDocs(vaultId)
   const code = await collectCode(vaultId)
   const ts = new Date().toISOString().slice(0, 16).replace('T', '_').replace(':', '-')
   const content = [
-    '<!-- PROMPT DE ANÁLISE gerado pelo md4all -->',
-    '<!-- 1. Copie TODO este texto e cole no chat da sua LLM (ex.: Claude.ai, ChatGPT). -->',
-    '<!-- 2. A LLM retornará um JSON. Salve-o como arquivo .json. -->',
-    '<!-- 3. Importe o .json em md4all via "Importar resultado". -->',
+    '<!-- ANALYSIS PROMPT generated by md4all -->',
+    '<!-- 1. Copy ALL this text and paste it into your LLM chat (e.g., Claude.ai, ChatGPT). -->',
+    '<!-- 2. The LLM will return a JSON. Save it as a .json file. -->',
+    '<!-- 3. Import the .json into md4all via "Import result". -->',
     '',
-    '=== INSTRUÇÃO DO SISTEMA ===',
+    '=== SYSTEM INSTRUCTION ===',
     SYSTEM_DOC,
     '',
-    '=== MENSAGEM ===',
+    '=== MESSAGE ===',
     buildAnalysisUserMessage(docs, code)
   ].join('\n')
   const path = `docs/_prompt_analyze_${ts}.txt`
@@ -546,7 +546,7 @@ export async function buildAnalyzePromptExport(vaultId: string): Promise<string>
   return path
 }
 
-/** Processa o JSON retornado por LLM externa para auditoria (normalize + verify, sem chamar LLM). */
+/** Processes the JSON returned by an external LLM for auditing (normalize + verify, without calling the LLM). */
 export async function processImportedAudit(vaultId: string, rawJson: string): Promise<AuditReport> {
   const parsed = JSON.parse(rawJson) as unknown
   let findings = normalizeFindings(parsed)
@@ -565,7 +565,7 @@ export async function processImportedAudit(vaultId: string, rawJson: string): Pr
   return { findings, usage: emptyUsage(), stats }
 }
 
-/** Processa o JSON retornado por LLM externa para análise/reescrita. */
+/** Processes the JSON returned by an external LLM for analysis/rewrite. */
 export function processImportedAnalyze(rawJson: string): AnalyzeResult {
   const parsed = JSON.parse(rawJson) as AnalysisReport
   const toStrArray = (v: unknown): string[] =>
@@ -601,20 +601,20 @@ export async function applyProposal(
   onProgress: Progress = () => {}
 ): Promise<ApplyResult> {
   const backupDir = backupDirName()
-  onProgress('Criando backup da documentação atual…', 10)
+  onProgress('Creating backup of current documentation…', 10)
 
-  // 1) snapshot completo da documentação atual para a pasta de backup (cópia)
+  // 1) full snapshot of current documentation into the backup folder (copy)
   const currentDocs = await collectPaths(vaultId, DOC_EXTS)
   for (const p of currentDocs) {
     try {
       const content = await readFile(vaultId, p)
       await writeFile(vaultId, `${backupDir}/${p}`, content)
     } catch {
-      /* ignora arquivo que falhar ao copiar */
+      /* ignore file that fails to copy */
     }
   }
 
-  // 2) merge incremental conforme status
+  // 2) incremental merge according to status
   const created: string[] = []
   const updated: string[] = []
   const removed: string[] = []
@@ -622,9 +622,9 @@ export async function applyProposal(
   let i = 0
   for (const file of report.proposedTree) {
     i++
-    // trava de segurança: o apply só mexe em arquivos de documentação, jamais em código
+    // safety guard: apply only touches documentation files, never code
     if (!isDocPath(file.path)) continue
-    onProgress(`Aplicando ${file.path}…`, 10 + Math.round((i / total) * 80))
+    onProgress(`Applying ${file.path}…`, 10 + Math.round((i / total) * 80))
     try {
       if (file.status === 'removed') {
         await remove(vaultId, file.path)
@@ -638,10 +638,10 @@ export async function applyProposal(
       }
       // 'unchanged': no-op
     } catch {
-      /* falha em um arquivo não aborta o lote */
+      /* failure in one file does not abort the batch */
     }
   }
 
-  onProgress('Aplicação concluída.', 100)
+  onProgress('Application complete.', 100)
   return { backupDir, created, updated, removed }
 }

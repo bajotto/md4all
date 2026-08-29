@@ -27,7 +27,7 @@ export default function Tabs(): JSX.Element | null {
             </span>
             <button
               className="tab-close"
-              aria-label="Fechar aba"
+              aria-label="Close tab"
               onClick={(e) => {
                 e.stopPropagation()
                 closeTab(t.vaultId, t.path)
@@ -40,11 +40,11 @@ export default function Tabs(): JSX.Element | null {
       })}
       <button
         className="tabs-close-all"
-        title="Fechar todas as abas"
-        aria-label="Fechar todas as abas"
+        title="Close all tabs"
+        aria-label="Close all tabs"
         onClick={() => closeAllTabs()}
       >
-        Fechar todas
+        Close all
       </button>
     </div>
   )

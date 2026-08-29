@@ -3,15 +3,15 @@ import type { EditorState, Transaction } from '@milkdown/kit/prose/state'
 import type { MilkdownPlugin } from '@milkdown/kit/ctx'
 
 /**
- * Cor de texto inline para o editor WYSIWYG (Milkdown/ProseMirror).
+ * Inline text color for the WYSIWYG editor (Milkdown/ProseMirror).
  *
- * Representação canônica no markdown: `<span style="color:VALOR">texto</span>`
- * — HTML inline puro, que o markdown-it do export já renderiza sem plugin
- * extra. O round-trip (markdown <-> documento) é feito por um plugin remark:
- *  - na leitura, funde a sequência de nós html `<span style="color">…</span>`
- *    num nó mdast `color`, que a mark abaixo converte para uma mark do PM;
- *  - na escrita, um handler do remark-stringify reescreve o nó `color` de
- *    volta para o `<span>`.
+ * Canonical representation in markdown: `<span style="color:VALUE">text</span>`
+ * — pure inline HTML, which the export markdown-it renders without an extra
+ * plugin. The round-trip (markdown <-> document) is handled by a remark plugin:
+ *  - on read, merges the sequence of html nodes `<span style="color">…</span>`
+ *    into an mdast `color` node, which the mark below converts to a PM mark;
+ *  - on write, a remark-stringify handler rewrites the `color` node back
+ *    to the `<span>`.
  */
 
 const COLOR_RE = /color\s*:\s*([^;"')]+)/i
@@ -34,7 +34,7 @@ interface MdastNode {
   children?: MdastNode[]
 }
 
-/** Funde sequências `<span style="color">…</span>` (no nível atual) em nós `color`. */
+/** Merges `<span style="color">…</span>` sequences (at the current level) into `color` nodes. */
 function mergeColorSpans(children: MdastNode[]): MdastNode[] {
   const out: MdastNode[] = []
   let i = 0
@@ -42,7 +42,7 @@ function mergeColorSpans(children: MdastNode[]): MdastNode[] {
     const n = children[i]
     if (n.type === 'html' && n.value && isSpanOpen(n.value)) {
       const color = colorOf(n.value)
-      // procura o </span> correspondente respeitando aninhamento de spans
+      // finds the matching </span> respecting span nesting
       let depth = 1
       let j = i + 1
       while (j < children.length) {
@@ -73,7 +73,7 @@ function transform(node: MdastNode): void {
   node.children = mergeColorSpans(node.children)
 }
 
-/** Plugin remark que cuida do round-trip de cor (parse + stringify). */
+/** Remark plugin that handles the color round-trip (parse + stringify). */
 export const remarkColor = $remark('md4allColor', () => {
   return function attacher(this: {
     data: () => { toMarkdownExtensions?: unknown[] }
@@ -100,7 +100,7 @@ export const remarkColor = $remark('md4allColor', () => {
   }
 })
 
-/** Schema da mark de cor (render no WYSIWYG + parse de HTML colado). */
+/** Color mark schema (WYSIWYG render + pasted HTML parse). */
 export const colorSchema = $markSchema('color', () => ({
   attrs: {
     color: { default: '', validate: 'string' }
@@ -153,8 +153,8 @@ export const colorSchema = $markSchema('color', () => ({
 }))
 
 /**
- * Aplica (color definido) ou remove (color vazio) a cor na seleção.
- * Substitui qualquer cor anterior, já que só faz sentido uma por trecho.
+ * Applies (color defined) or removes (empty color) the color on the selection.
+ * Replaces any previous color, since only one per span makes sense.
  */
 export const applyColorCommand = $command(
   'ApplyColor',
@@ -173,7 +173,7 @@ export const applyColorCommand = $command(
     }
 )
 
-/** Conjunto de plugins a registrar no editor Milkdown para habilitar cores. */
+/** Set of plugins to register in the Milkdown editor to enable colors. */
 export const colorPlugins: MilkdownPlugin[] = [
   remarkColor,
   colorSchema,

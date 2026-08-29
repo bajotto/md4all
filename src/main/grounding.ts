@@ -2,7 +2,7 @@ import { readFile } from './vault'
 import { anchorMatches } from './groundingCore'
 import type { Anchor, Finding } from './types'
 
-// cache de conteúdo por (vaultId+path) durante uma verificação
+// content cache per (vaultId+path) during a verification
 type FileCache = Map<string, string | null>
 
 async function load(vaultId: string, path: string, cache: FileCache): Promise<string | null> {
@@ -19,9 +19,9 @@ async function load(vaultId: string, path: string, cache: FileCache): Promise<st
 }
 
 /**
- * Verifica uma âncora por busca textual (heurística, agnóstica de linguagem):
- * o arquivo existe E (quote normalizado aparece no arquivo) OU (symbol aparece).
- * `line`, se dado, é apenas sinal fraco (não invalida sozinho).
+ * Verifies an anchor via textual search (heuristic, language-agnostic):
+ * the file exists AND (normalized quote appears in the file) OR (symbol appears).
+ * `line`, if given, is only a weak signal (does not invalidate on its own).
  */
 export async function verifyAnchor(
   vaultId: string,
@@ -35,8 +35,8 @@ export async function verifyAnchor(
 }
 
 /**
- * Marca cada finding como 'verified' se ≥1 âncora bate; senão 'unverified'.
- * Não rebaixa findings já 'refuted' (vindos da revisão).
+ * Marks each finding as 'verified' if ≥1 anchor matches; otherwise 'unverified'.
+ * Does not downgrade findings already 'refuted' (from the review).
  */
 export async function verifyFindings(vaultId: string, findings: Finding[]): Promise<Finding[]> {
   const cache: FileCache = new Map()

@@ -15,7 +15,7 @@ export default function Sidebar(): JSX.Element {
       </div>
       <VaultPicker />
       {vaults.length === 0 ? (
-        <p className="sidebar-empty">Adicione um vault (local ou SSH) para começar.</p>
+        <p className="sidebar-empty">Add a vault (local or SSH) to get started.</p>
       ) : (
         <>
           <div className="vault-roots">

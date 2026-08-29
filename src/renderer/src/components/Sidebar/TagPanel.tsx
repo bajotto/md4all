@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useStore } from '../../store/useStore'
 import type { TagInfo } from '../../types'
 
-/** Seção da sidebar com as tags do vault; clicar filtra as notas por tag. */
+/** Sidebar section with the vault tags; clicking filters notes by tag. */
 export default function TagPanel(): JSX.Element {
   const loadTags = useStore((s) => s.loadTags)
   const filterByTag = useStore((s) => s.filterByTag)
@@ -19,7 +19,7 @@ export default function TagPanel(): JSX.Element {
     void loadTags().then(setTags)
   }
 
-  // recarrega ao abrir e quando muda o conjunto de vaults
+  // reloads on open and when the set of vaults changes
   useEffect(() => {
     if (open) refresh()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -34,7 +34,7 @@ export default function TagPanel(): JSX.Element {
       </button>
       {open ? (
         tags.length === 0 ? (
-          <p className="sidebar-empty">Nenhuma tag encontrada.</p>
+          <p className="sidebar-empty">No tags found.</p>
         ) : (
           <div className="tag-list">
             {tags.map((t) => (
@@ -55,12 +55,12 @@ export default function TagPanel(): JSX.Element {
         <div className="tag-results">
           <div className="tag-results-head">
             <span>#{tagFilter.tag}</span>
-            <button className="tag-clear" onClick={clearTagFilter} title="Limpar filtro">
+            <button className="tag-clear" onClick={clearTagFilter} title="Clear filter">
               ✕
             </button>
           </div>
           {tagFilter.notes.length === 0 ? (
-            <p className="sidebar-empty">Sem notas.</p>
+            <p className="sidebar-empty">No notes.</p>
           ) : (
             tagFilter.notes.map((n) => (
               <button

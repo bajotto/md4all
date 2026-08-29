@@ -9,19 +9,19 @@ export default function Welcome(): JSX.Element {
     <div className="welcome">
       <Logo size={56} />
       <h1 className="welcome-title">md4all</h1>
-      <p className="welcome-sub">Editor Markdown WYSIWYG — local, iCloud, SMB ou SSH/SFTP</p>
+      <p className="welcome-sub">WYSIWYG Markdown editor — local, iCloud, SMB or SSH/SFTP</p>
       {vaults.length === 0 ? (
         <>
           <button className="btn-primary welcome-cta" onClick={() => void addVaultFromPicker()}>
-            Adicionar vault…
+            Add vault…
           </button>
           <p className="welcome-hint">
-            A pasta pode estar no disco local, iCloud Drive, um share SMB montado
-            ou um servidor remoto via SSH/SFTP.
+            The folder can be on local disk, iCloud Drive, a mounted SMB share
+            or a remote server via SSH/SFTP.
           </p>
         </>
       ) : (
-        <p className="welcome-hint">Selecione ou crie um arquivo na barra lateral para começar a editar.</p>
+        <p className="welcome-hint">Select or create a file in the sidebar to start editing.</p>
       )}
     </div>
   )

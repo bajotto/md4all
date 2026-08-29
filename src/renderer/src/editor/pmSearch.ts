@@ -25,7 +25,7 @@ export function searchPlugin(): Plugin {
         const meta = tr.getMeta(searchKey) as SearchState | undefined
         if (meta) return meta
         if (tr.docChanged && value.matches.length) {
-          // remapeia posições após edição
+          // remaps positions after editing
           return {
             matches: value.matches
               .map((m) => ({
@@ -91,7 +91,7 @@ function scrollToCurrent(view: EditorView, s: SearchState): void {
   view.dispatch(tr.scrollIntoView().setMeta(searchKey, s))
 }
 
-/** Cria um SearchController para uma EditorView do ProseMirror (Milkdown). */
+/** Creates a SearchController for a ProseMirror (Milkdown) EditorView. */
 export function createPmController(getView: () => EditorView | null): SearchController {
   let query = ''
   let opts: SearchOptions = { caseSensitive: false, regex: false }
@@ -160,7 +160,7 @@ export function createPmController(getView: () => EditorView | null): SearchCont
       if (!view || !s || s.matches.length === 0) return 0
       const n = s.matches.length
       const tr = view.state.tr
-      // da última para a primeira, para não invalidar posições anteriores
+      // from last to first, so earlier positions are not invalidated
       for (let i = s.matches.length - 1; i >= 0; i--) {
         const m = s.matches[i]
         tr.insertText(replacement, m.from, m.to)

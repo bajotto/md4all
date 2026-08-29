@@ -27,7 +27,7 @@ export default function RewriteView({ vaultId }: { vaultId: string }): JSX.Eleme
   const [selected, setSelected] = useState<ProposedFile | null>(null)
   const [rightTab, setRightTab] = useState<RightTab>('content')
   const [currentContent, setCurrentContent] = useState<string>('')
-  // apply granular: caminhos selecionados (default: todos os que mudam)
+  // granular apply: selected paths (default: all that change)
   const [picked, setPicked] = useState<Set<string>>(new Set())
 
   const proposedTree = useMemo(() => (report ? buildProposedTree(report.proposedTree) : []), [report])
@@ -95,7 +95,7 @@ export default function RewriteView({ vaultId }: { vaultId: string }): JSX.Eleme
       setReport(r.report)
       setStats(r.stats)
       setAnalyzeUsage(r.usage)
-      // pré-seleciona todos os arquivos que mudam
+      // pre-selects all files that change
       setPicked(new Set(r.report.proposedTree.filter((f) => f.status !== 'unchanged').map((f) => f.path)))
       setPhase('report')
     } catch (err) {
@@ -126,7 +126,7 @@ export default function RewriteView({ vaultId }: { vaultId: string }): JSX.Eleme
     }
     const n = subset.proposedTree.filter((f) => f.status !== 'unchanged').length
     const ok = await window.api.confirm(
-      `Aplicar ${n} mudança(s) selecionada(s)? A documentação atual será copiada para backup antes.`
+      `Apply ${n} selected change(s)? Current documentation will be copied to backup first.`
     )
     if (!ok) return
     setPhase('applying')
@@ -154,25 +154,25 @@ export default function RewriteView({ vaultId }: { vaultId: string }): JSX.Eleme
     return (
       <div className="doc-center">
         <p>
-          Modo avançado: a LLM reescreve a árvore de documentação inteira para alinhá-la ao código. Revise o
-          diff e selecione o que aplicar — nada é gravado sem sua confirmação.
+          Advanced mode: the LLM rewrites the entire documentation tree to align it with the code. Review the
+          diff and select what to apply — nothing is written without your confirmation.
         </p>
         <button className="modal-btn-ok" onClick={() => void runAnalysis()}>
-          Propor reescrita
+          Propose rewrite
         </button>
-        <div className="doc-external-sep">— ou use LLM externa —</div>
+        <div className="doc-external-sep">— or use external LLM —</div>
         <div className="doc-external-btns">
           <button className="inline-btn" onClick={() => void exportPrompt()}>
-            Exportar prompt
+            Export prompt
           </button>
           <label className="inline-btn doc-import-label">
-            Importar resultado
+            Import result
             <input ref={importRef} type="file" accept=".json" style={{ display: 'none' }} onChange={(e) => void handleImport(e)} />
           </label>
         </div>
         {promptExportedTo ? (
           <div className="doc-review ok" style={{ marginTop: 8, fontSize: 12 }}>
-            ✓ Prompt em <code>{promptExportedTo}</code> — cole na LLM e importe o JSON.
+            ✓ Prompt at <code>{promptExportedTo}</code> — paste into the LLM and import the JSON.
           </div>
         ) : null}
       </div>
@@ -183,7 +183,7 @@ export default function RewriteView({ vaultId }: { vaultId: string }): JSX.Eleme
       <div className="doc-center">
         <p className="test-msg err">✗ {error}</p>
         <button className="modal-btn-cancel" onClick={() => setPhase('idle')}>
-          Voltar
+          Back
         </button>
       </div>
     )
@@ -194,7 +194,7 @@ export default function RewriteView({ vaultId }: { vaultId: string }): JSX.Eleme
       <div className="doc-split">
         <aside className="doc-left">
           <ReportSummary report={report} />
-          <div className="doc-tree-title">Estrutura proposta (marque o que aplicar)</div>
+          <div className="doc-tree-title">Proposed structure (check what to apply)</div>
           <div className="doc-tree">
             {proposedTree.map((n) => (
               <ProposedNode
@@ -222,7 +222,7 @@ export default function RewriteView({ vaultId }: { vaultId: string }): JSX.Eleme
                 <span className="doc-right-path">{selected.path}</span>
                 <div className="doc-tabs">
                   <button className={rightTab === 'content' ? 'active' : ''} onClick={() => setRightTab('content')}>
-                    Conteúdo
+                    Content
                   </button>
                   <button className={rightTab === 'diff' ? 'active' : ''} onClick={() => setRightTab('diff')}>
                     Diff
@@ -231,14 +231,14 @@ export default function RewriteView({ vaultId }: { vaultId: string }): JSX.Eleme
               </div>
               {selected.rationale ? <p className="doc-rationale">💡 {selected.rationale}</p> : null}
               {rightTab === 'content' ? (
-                <pre className="doc-content">{selected.content || '(vazio)'}</pre>
+                <pre className="doc-content">{selected.content || '(empty)'}</pre>
               ) : (
                 <DiffView oldText={currentContent} newText={selected.content} />
               )}
             </>
           ) : (
             <div className="doc-center">
-              <p>Selecione um arquivo na estrutura proposta.</p>
+              <p>Select a file in the proposed structure.</p>
             </div>
           )}
         </section>
@@ -248,7 +248,7 @@ export default function RewriteView({ vaultId }: { vaultId: string }): JSX.Eleme
         <UsageSummary report={report} stats={stats} analyzeUsage={analyzeUsage} reviewUsage={reviewUsage} />
         {review ? (
           <div className={`doc-review ${review.approved ? 'ok' : 'block'}`}>
-            {review.approved ? <span>✓ Revisão aprovou a proposta.</span> : <span>✗ Revisão bloqueou ({review.blocking.length}):</span>}
+            {review.approved ? <span>✓ Review approved the proposal.</span> : <span>✗ Review blocked ({review.blocking.length}):</span>}
             {review.blocking.slice(0, 3).map((b, i) => (
               <div key={i} className="doc-review-item">
                 • {b}
@@ -258,23 +258,23 @@ export default function RewriteView({ vaultId }: { vaultId: string }): JSX.Eleme
         ) : null}
         {applied ? (
           <div className="doc-review ok">
-            ✓ Aplicado. Backup em <code>{applied.backupDir}</code> · {applied.created.length} novos,{' '}
-            {applied.updated.length} editados, {applied.removed.length} removidos.
+            ✓ Applied. Backup at <code>{applied.backupDir}</code> · {applied.created.length} new,{' '}
+            {applied.updated.length} edited, {applied.removed.length} removed.
           </div>
         ) : null}
         <div className="doc-footer-actions">
           {!applied ? (
             <>
               <button className="modal-btn-ok" onClick={() => void runReview()} disabled={busy}>
-                {phase === 'reviewing' ? 'Revisando…' : review ? 'Revisar de novo' : 'Revisar (2ª LLM)'}
+                {phase === 'reviewing' ? 'Reviewing…' : review ? 'Review again' : 'Review (2nd LLM)'}
               </button>
               <button
                 className="modal-btn-ok"
                 onClick={() => void runApply()}
                 disabled={busy || !review || !review.approved || picked.size === 0}
-                title={!review ? 'Rode a revisão primeiro' : ''}
+                title={!review ? 'Run the review first' : ''}
               >
-                {phase === 'applying' ? 'Aplicando…' : `Aplicar (${picked.size})`}
+                {phase === 'applying' ? 'Applying…' : `Apply (${picked.size})`}
               </button>
             </>
           ) : null}
@@ -303,13 +303,13 @@ function ReportSummary({ report }: { report: AnalysisReport }): JSX.Element {
   const mismatches = asArray(report.codeMismatches)
   return (
     <div className="doc-report">
-      {section('Coesão', report.coherence)}
-      {section('Contradições', report.contradictions)}
-      {section('Duplicações', report.duplications)}
+      {section('Coherence', report.coherence)}
+      {section('Contradictions', report.contradictions)}
+      {section('Duplications', report.duplications)}
       {mismatches.length ? (
         <details className="doc-report-sec" open>
           <summary>
-            Divergências doc↔código <span className="doc-count">{mismatches.length}</span>
+            Doc↔code divergences <span className="doc-count">{mismatches.length}</span>
           </summary>
           <ul>
             {mismatches.map((raw, i) => {
@@ -380,7 +380,7 @@ function ProposedNode({
           checked={picked.has(node.path)}
           onChange={() => onToggle(node.path)}
           onClick={(e) => e.stopPropagation()}
-          title="Aplicar este arquivo"
+          title="Apply this file"
         />
       ) : (
         <span style={{ width: 13, display: 'inline-block' }} />
@@ -433,20 +433,20 @@ function UsageSummary({
   return (
     <details className="doc-usage" open>
       <summary>
-        📊 Resumo — in {fmtTokens(totalIn)} · out {fmtTokens(totalOut)} tokens · ~{fmtCost(totalCost)}
+        📊 Summary — in {fmtTokens(totalIn)} · out {fmtTokens(totalOut)} tokens · ~{fmtCost(totalCost)}
       </summary>
       <div className="doc-usage-grid">
         <div>
-          <span className="doc-usage-k">Lido</span>
-          {stats ? `${stats.docCount} docs · ${stats.codeCount} arquivos de código` : '—'}
+          <span className="doc-usage-k">Read</span>
+          {stats ? `${stats.docCount} docs · ${stats.codeCount} code files` : '—'}
         </div>
         <div>
-          <span className="doc-usage-k">Proposta</span>
-          {counts.created} novos · {counts.updated} editados · {counts.removed} removidos · {counts.unchanged} mantidos
+          <span className="doc-usage-k">Proposal</span>
+          {counts.created} new · {counts.updated} edited · {counts.removed} removed · {counts.unchanged} kept
         </div>
         <div>
           <span className="doc-usage-k">Total</span>
-          {calls} chamada{calls === 1 ? '' : 's'} · in {fmtTokens(totalIn)} / out {fmtTokens(totalOut)} ·{' '}
+          {calls} call{calls === 1 ? '' : 's'} · in {fmtTokens(totalIn)} / out {fmtTokens(totalOut)} ·{' '}
           <strong>~{fmtCost(totalCost)}</strong>
         </div>
       </div>

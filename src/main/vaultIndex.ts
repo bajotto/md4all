@@ -1,12 +1,12 @@
 import { getVault, isSftp, listTree, readFile } from './vault'
 import type { FileNode } from './types'
 
-/** Metadados extraídos de uma nota markdown. */
+/** Metadata extracted from a markdown note. */
 export interface NoteMeta {
-  path: string // relativo ao vault
+  path: string // relative to the vault
   title: string
   tags: string[]
-  links: string[] // alvos de wikilinks ([[alvo]]) — nome cru
+  links: string[] // wikilink targets ([[target]]) — raw name
 }
 
 export interface BacklinkRef {
@@ -42,7 +42,7 @@ function baseName(p: string): string {
   return last.replace(/\.[^.]+$/, '')
 }
 
-/** Remove blocos de código cercados para não captar #tags / [[links]] dentro deles. */
+/** Removes fenced code blocks to avoid capturing #tags / [[links]] inside them. */
 function stripFences(md: string): string {
   const lines = md.split('\n')
   const out: string[] = []
@@ -85,13 +85,13 @@ function parseFrontmatter(md: string): { title?: string; tags: string[]; body: s
             if (v) tags.push(v)
           })
       } else if (rest) {
-        // tags: a b  ou  tags: a, b
+        // tags: a b  or  tags: a, b
         rest.split(/[,\s]+/).forEach((s) => {
           const v = s.replace(/^["']|["']$/g, '')
           if (v) tags.push(v)
         })
       } else {
-        // bloco YAML:  tags:\n  - a\n  - b
+        // YAML block:  tags:\n  - a\n  - b
         for (let j = i + 1; j < lines.length; j++) {
           const item = lines[j].match(/^\s*-\s*(.+)$/)
           if (!item) break
@@ -107,20 +107,20 @@ function parseNote(relPath: string, raw: string): NoteMeta {
   const { title: fmTitle, tags: fmTags, body } = parseFrontmatter(raw)
   const clean = stripFences(body)
 
-  // tags inline #tag (não confundir com headings "# " nem com ##)
+  // inline #tag (do not confuse with headings "# " or ##)
   const tagSet = new Set(fmTags)
   for (const m of clean.matchAll(/(?:^|[\s(])#([A-Za-z][\w/-]*)/g)) {
     tagSet.add(m[1])
   }
 
-  // wikilinks [[alvo]] ou [[alvo|alias]] ou [[alvo#secao]]
+  // wikilinks [[target]] or [[target|alias]] or [[target#section]]
   const links: string[] = []
   for (const m of clean.matchAll(/\[\[([^\]\n]+?)\]\]/g)) {
     const target = m[1].split('|')[0].split('#')[0].trim()
     if (target) links.push(target)
   }
 
-  // título: frontmatter > primeiro H1 > nome do arquivo
+  // title: frontmatter > first H1 > file name
   let title = fmTitle
   if (!title) {
     const h1 = clean.match(/^#\s+(.+?)\s*#*\s*$/m)
@@ -140,10 +140,10 @@ async function readNote(vaultId: string, relPath: string): Promise<NoteMeta | nu
   }
 }
 
-/** (Re)constrói o índice completo de um vault. */
+/** (Re)builds the complete index of a vault. */
 export async function buildIndex(vaultId: string): Promise<void> {
-  // Vaults remotos (SFTP) NÃO são indexados: exigiria varrer e ler toda a
-  // árvore por rede a cada carga. PKM (wikilinks/tags/backlinks) é local-only.
+  // Remote vaults (SFTP) are NOT indexed: it would require traversing and reading
+  // the entire tree over the network on every load. PKM (wikilinks/tags/backlinks) is local-only.
   if (isSftp(getVault(vaultId))) {
     cache.set(vaultId, { notes: new Map() })
     return
@@ -168,11 +168,11 @@ async function ensureIndex(vaultId: string): Promise<VaultIdx> {
   return idx
 }
 
-/** Atualiza uma única nota no índice (após escrita ou mudança externa). */
+/** Updates a single note in the index (after writing or external change). */
 export async function touchNote(vaultId: string, relPath: string): Promise<void> {
   if (!/\.(md|markdown|mdown|mkd)$/i.test(relPath)) return
   const idx = cache.get(vaultId)
-  if (!idx) return // será construído sob demanda na próxima consulta
+  if (!idx) return // will be built on demand on the next query
   const meta = await readNote(vaultId, relPath)
   if (meta) idx.notes.set(relPath, meta)
   else idx.notes.delete(relPath)
@@ -186,7 +186,7 @@ export function dropVault(vaultId: string): void {
   cache.delete(vaultId)
 }
 
-/** Resolve o alvo de um wikilink para o caminho de uma nota (ou null). */
+/** Resolves a wikilink target to a note path (or null). */
 function resolveTarget(idx: VaultIdx, target: string): NoteMeta | null {
   const want = target.replace(/^\.\//, '').replace(/\\/g, '/').toLowerCase()
   const wantNoExt = want.replace(/\.(md|markdown|mdown|mkd)$/i, '')
@@ -195,11 +195,11 @@ function resolveTarget(idx: VaultIdx, target: string): NoteMeta | null {
     const pNoExt = p.replace(/\.(md|markdown|mdown|mkd)$/i, '')
     if (pNoExt === wantNoExt || p === want) return meta
   }
-  // por basename
+  // by basename
   for (const meta of idx.notes.values()) {
     if (baseName(meta.path).toLowerCase() === wantNoExt) return meta
   }
-  // por título (permite [[Título]] mesmo com nome de arquivo diferente/slug)
+  // by title (allows [[Title]] even with a different file name/slug)
   for (const meta of idx.notes.values()) {
     if (meta.title.toLowerCase() === wantNoExt) return meta
   }
@@ -251,7 +251,7 @@ export async function notesForTag(vaultId: string, tag: string): Promise<NoteRef
   return out
 }
 
-/** Lista todas as notas (para autocomplete de wikilinks). */
+/** Lists all notes (for wikilink autocomplete). */
 export async function listNotes(vaultId: string): Promise<NoteRef[]> {
   const idx = await ensureIndex(vaultId)
   return [...idx.notes.values()]

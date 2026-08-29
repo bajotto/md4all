@@ -19,8 +19,8 @@ import { setChildrenAt, setHasMdAt } from './treeUtil'
 
 const api = window.api
 
-// Sondagem de "pasta tem .md?" para vaults SFTP: serial (1 por vez, pois a
-// conexão transitória não é reentrante) e em background — nunca bloqueia a UI.
+// "folder has .md?" probing for SFTP vaults: serial (1 at a time, since the
+// transient connection is not reentrant) and in background — never blocks the UI.
 const probedMd = new Set<string>()
 let probeChain: Promise<void> = Promise.resolve()
 function queueMdProbe(vaultId: string, relPath: string, apply: (hasMd: boolean) => void): void {
@@ -32,7 +32,7 @@ function queueMdProbe(vaultId: string, relPath: string, apply: (hasMd: boolean) 
       const has = (await api.hasMarkdown(vaultId, relPath)) as boolean
       if (has) apply(true)
     } catch {
-      /* sondagem é best-effort */
+      /* probing is best-effort */
     }
   })
 }
@@ -52,11 +52,11 @@ interface State {
   theme: 'light' | 'dark'
   clipboard: Clipboard | null
 
-  // multi-raiz: árvore e estado de expansão por vault
+  // multi-root: tree and expansion state per vault
   trees: Record<string, FileNode[]>
   expanded: Record<string, boolean>
   loadingTree: Record<string, boolean>
-  loadingDir: Record<string, boolean> // "vaultId::relPath" → carregando filhos (lazy SFTP)
+  loadingDir: Record<string, boolean> // "vaultId::relPath" → loading children (lazy SFTP)
 
   tabs: OpenTab[]
   active: ActiveRef | null
@@ -67,7 +67,7 @@ interface State {
   searchResults: SearchHit[]
   searching: boolean
 
-  // painel de busca (drawer direito) + busca por AI
+  // search panel (right drawer) + AI search
   searchPanelOpen: boolean
   searchMode: 'local' | 'hibrida'
   aiQuery: string
@@ -77,14 +77,14 @@ interface State {
   aiError: string | null
   revealTarget: RevealTarget | null
 
-  // modal de configuração da LLM (compartilhado p/ abrir a partir do painel AI)
+  // LLM settings modal (shared so it can be opened from the AI panel)
   llmSettingsOpen: boolean
 
-  // true quando token + 2 modelos estão configurados (fonte da verdade p/ bloquear UI de LLM)
+  // true when token + 2 models are configured (source of truth to block LLM UI)
   llmConfigured: boolean
   refreshLlmConfigured: () => Promise<void>
 
-  // PKM (índice: wikilinks / tags / backlinks)
+  // PKM (index: wikilinks / tags / backlinks)
   backlinks: BacklinkRef[]
   tagFilter: { tag: string; notes: NoteRef[] } | null
 
@@ -101,7 +101,7 @@ interface State {
   removeVault: (vaultId: string) => Promise<void>
   toggleTheme: () => Promise<void>
 
-  // arquivos
+  // files
   openFile: (vaultId: string, relPath: string) => Promise<void>
   closeTab: (vaultId: string, relPath: string) => void
   closeAllTabs: () => void
@@ -123,7 +123,7 @@ interface State {
   runSearch: (query: string) => Promise<void>
   clearSearch: () => void
 
-  // painel de busca + AI + reveal
+  // search panel + AI + reveal
   toggleSearchPanel: () => void
   openSearchPanel: (mode?: 'local' | 'hibrida') => void
   closeSearchPanel: () => void
@@ -195,8 +195,8 @@ export const useStore = create<State>((set, get) => ({
   init: async () => {
     const s = (await api.getSettings()) as AppSettings
     get().applySettings(s)
-    // observa e carrega cada vault; locais expandidos por padrão,
-    // remotos (sftp) ficam recolhidos até o usuário clicar (rede).
+    // observes and loads each vault; local ones expanded by default,
+    // remote (sftp) stay collapsed until the user clicks (network).
     const expanded: Record<string, boolean> = {}
     for (const v of s.vaults) {
       await api.watchVault(v.id)
@@ -208,8 +208,8 @@ export const useStore = create<State>((set, get) => ({
       }
     }
     set({ expanded })
-    // onboarding: se a LLM não estiver configurada, abre o modal ⚙ automaticamente
-    // (cada usuário precisa adicionar sua própria chave OpenRouter — nada embarcado)
+    // onboarding: if the LLM is not configured, opens the ⚙ modal automatically
+    // (each user needs to add their own OpenRouter key — nothing embedded)
     await get().refreshLlmConfigured()
     if (!get().llmConfigured) set({ llmSettingsOpen: true })
   },
@@ -217,22 +217,22 @@ export const useStore = create<State>((set, get) => ({
   loadTree: async (vaultId) => {
     set({ loadingTree: { ...get().loadingTree, [vaultId]: true } })
     try {
-      // SFTP: carrega só o nível raiz (subpastas carregam ao expandir — evita
-      // varrer um repo remoto inteiro). Local: árvore completa (rápido, disco).
+      // SFTP: loads only the root level (subfolders load on expand — avoids
+      // scanning an entire remote repo). Local: full tree (fast, disk).
       const isSftp = get().vaults.find((v) => v.id === vaultId)?.kind === 'sftp'
       const tree = (await (isSftp ? api.listDir(vaultId, '') : api.tree(vaultId))) as FileNode[]
       set({ trees: { ...get().trees, [vaultId]: tree } })
       if (isSftp) get().probeMd(vaultId, tree)
-      // constrói o índice de PKM em segundo plano (wikilinks/tags/backlinks)
+      // builds the PKM index in the background (wikilinks/tags/backlinks)
       void api
         .indexBuild(vaultId)
         .then(() => get().loadBacklinks())
         .catch(() => {
-          /* índice pode falhar em vault remoto grande; não bloqueia a árvore */
+          /* index may fail on a large remote vault; does not block the tree */
         })
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
-      await api.showError(`Falha ao listar o vault:\n${msg}`)
+      await api.showError(`Failed to list vault:\n${msg}`)
     } finally {
       set({ loadingTree: { ...get().loadingTree, [vaultId]: false } })
     }
@@ -248,14 +248,14 @@ export const useStore = create<State>((set, get) => ({
       if (tree) set({ trees: { ...get().trees, [vaultId]: setChildrenAt(tree, relPath, children) } })
       if (get().vaults.find((v) => v.id === vaultId)?.kind === 'sftp') get().probeMd(vaultId, children)
     } catch (err) {
-      await api.showError(`Falha ao listar a pasta:\n${err instanceof Error ? err.message : String(err)}`)
+      await api.showError(`Failed to list folder:\n${err instanceof Error ? err.message : String(err)}`)
     } finally {
       set({ loadingDir: { ...get().loadingDir, [key]: false } })
     }
   },
 
-  // enfileira sondagem "tem .md?" para cada filho-diretório (vault SFTP); ao
-  // confirmar, marca o nó e a árvore re-renderiza com a pasta destacada.
+  // queues "has .md?" probing for each subdirectory (SFTP vault); upon
+  // confirmation, marks the node and the tree re-renders with the folder highlighted.
   probeMd: (vaultId, nodes) => {
     for (const n of nodes) {
       if (!n.isDir || n.hasMd !== undefined) continue
@@ -302,8 +302,8 @@ export const useStore = create<State>((set, get) => ({
       const vault = (await api.addSftp(input)) as Vault
       const s = (await api.getSettings()) as AppSettings
       get().applySettings(s)
-      // adiciona COLAPSADO e não bloqueia: a árvore remota carrega lazy ao expandir
-      // (evita o "Conectando…" infinito ao varrer um repo grande via SFTP).
+      // adds COLLAPSED and does not block: the remote tree loads lazily on expand
+      // (avoids the infinite "Connecting…" when scanning a large repo via SFTP).
       set({ expanded: { ...get().expanded, [vault.id]: false } })
       return true
     } catch (err) {
@@ -317,7 +317,7 @@ export const useStore = create<State>((set, get) => ({
     await api.removeVault(vaultId)
     const s = (await api.getSettings()) as AppSettings
     get().applySettings(s)
-    // remove abas, árvore e estado do vault
+    // removes tabs, tree, and vault state
     const tabs = get().tabs.filter((t) => t.vaultId !== vaultId)
     const trees = { ...get().trees }
     delete trees[vaultId]
@@ -403,7 +403,7 @@ export const useStore = create<State>((set, get) => ({
         )
       })
     } catch (err) {
-      await api.showError(`Falha ao salvar:\n${err instanceof Error ? err.message : String(err)}`)
+      await api.showError(`Failed to save:\n${err instanceof Error ? err.message : String(err)}`)
     }
   },
 
@@ -411,7 +411,7 @@ export const useStore = create<State>((set, get) => ({
     const finalPath = relPath.endsWith('.md') ? relPath : `${relPath}.md`
     try {
       await api.createFile(vaultId, finalPath)
-      // marca pais como tendo .md (evita lag visual)
+      // marks parents as having .md (avoids visual lag)
       set({
         trees: {
           ...get().trees,
@@ -437,7 +437,7 @@ export const useStore = create<State>((set, get) => ({
   renamePath: async (vaultId, from, to) => {
     try {
       await api.rename(vaultId, from, to)
-      // marca novo caminho com hasMd se for .md (evita lag visual)
+      // marks new path with hasMd if it's .md (avoids visual lag)
       const isMd = /\.(md|markdown|mdown|mkd)$/i.test(to)
       const trees = get().trees[vaultId] ?? []
       set({
@@ -476,22 +476,22 @@ export const useStore = create<State>((set, get) => ({
   pastePath: async (vaultId, toDir) => {
     const clipboard = get().clipboard
     if (!clipboard) {
-      await api.showError('Nada copiado')
+      await api.showError('Nothing copied')
       return
     }
     try {
-      const basename = clipboard.path.split('/').pop() || 'cópia'
+      const basename = clipboard.path.split('/').pop() || 'copy'
       const targetPath = toDir ? `${toDir}/${basename}` : basename
-      // evita copiar para si mesmo
+      // avoids copying onto itself
       if (clipboard.vaultId === vaultId && clipboard.path === targetPath) {
-        await api.showError('Não é possível colar no mesmo local')
+        await api.showError('Cannot paste into the same location')
         return
       }
       const content = (await api.read(clipboard.vaultId, clipboard.path)) as string
       await api.createFile(vaultId, targetPath)
       await api.write(vaultId, targetPath, content)
       await get().refreshTree(vaultId)
-      // marca pais como tendo .md se for markdown
+      // marks parents as having .md if it's markdown
       if (/\.(md|markdown|mdown|mkd)$/i.test(targetPath)) {
         set({
           trees: {
@@ -520,7 +520,7 @@ export const useStore = create<State>((set, get) => ({
         )
       })
     } catch {
-      /* arquivo pode ter sumido */
+      /* file may have disappeared */
     }
   },
 
@@ -540,7 +540,7 @@ export const useStore = create<State>((set, get) => ({
         )
       })
     } catch {
-      /* arquivo pode ter sumido */
+      /* file may have disappeared */
     }
   },
 
@@ -563,7 +563,7 @@ export const useStore = create<State>((set, get) => ({
           .catch(() => [] as SearchHit[])
       )
     )
-    // descarta resultado se o usuário já digitou outra query (race condition)
+    // discards result if the user already typed another query (race condition)
     if (get().searchQuery !== query) return
     set({ searchResults: settled.flat(), searching: false })
   },
@@ -584,7 +584,7 @@ export const useStore = create<State>((set, get) => ({
       return
     }
     set({ aiSearching: true, aiError: null, aiResults: [], aiUsage: null })
-    // busca em TODOS os vaults (igual à busca literal) — não só o vault ativo
+    // searches ALL vaults (same as literal search) — not just the active vault
     const settled = await Promise.allSettled(
       vaults.map((v) =>
         (
@@ -595,7 +595,7 @@ export const useStore = create<State>((set, get) => ({
         ).then((res) => ({ vaultId: v.id, vaultName: v.name, ...res }))
       )
     )
-    // descarta resultado se o usuário mudou a query enquanto a busca corria
+    // discards result if the user changed the query while the search was running
     if (get().aiQuery !== query) {
       set({ aiSearching: false })
       return
@@ -636,8 +636,8 @@ export const useStore = create<State>((set, get) => ({
   clearAiSearch: () =>
     set({ aiQuery: '', aiResults: [], aiUsage: null, aiError: null, aiSearching: false }),
 
-  // abre o arquivo do hit e marca a linha/termo para o editor revelar.
-  // Captura searchQuery antes do await para não pegar valor obsoleto (ex.: SFTP).
+  // opens the hit's file and marks the line/term for the editor to reveal.
+  // Captures searchQuery before the await to avoid stale value (e.g. SFTP).
   revealHit: async (hit) => {
     const query = get().searchQuery
     await get().openFile(hit.vaultId, hit.path)
@@ -648,11 +648,11 @@ export const useStore = create<State>((set, get) => ({
 
   setLlmSettingsOpen: (open) => {
     set({ llmSettingsOpen: open })
-    // ao fechar o modal, recarrega o estado de "LLM configurada" (usuário pode ter salvo chave/modelos)
+    // when closing the modal, reloads the "LLM configured" state (user may have saved key/models)
     if (!open) void get().refreshLlmConfigured()
   },
 
-  // consulta o main (llm:getConfig) e atualiza llmConfigured — fonte da verdade p/ bloquear UI de LLM
+  // queries the main process (llm:getConfig) and updates llmConfigured — source of truth to block LLM UI
   refreshLlmConfigured: async () => {
     try {
       const cfg = (await api.llmGetConfig()) as {
@@ -674,7 +674,7 @@ export const useStore = create<State>((set, get) => ({
     }
     try {
       const refs = (await api.indexBacklinks(active.vaultId, active.path)) as BacklinkRef[]
-      // só aplica se ainda for o arquivo ativo (evita corrida ao trocar de aba)
+      // only applies if still the active file (avoids race when switching tabs)
       const cur = get().active
       if (cur && cur.vaultId === active.vaultId && cur.path === active.path) set({ backlinks: refs })
     } catch {
@@ -688,15 +688,15 @@ export const useStore = create<State>((set, get) => ({
     try {
       const resolved = (await api.indexResolve(active.vaultId, target)) as string | null
       if (resolved) await get().openFile(active.vaultId, resolved)
-      else await api.showError(`Nota não encontrada: [[${target}]]`)
+      else await api.showError(`Note not found: [[${target}]]`)
     } catch (err) {
       await api.showError(err instanceof Error ? err.message : String(err))
     }
   },
 
-  // clique em link markdown comum ([texto](outro.md)) apontando para outra
-  // nota do vault — resolve o caminho relativo ao arquivo atual e abre na aba,
-  // em vez de deixar o Electron tentar navegar/abrir no app padrão do SO
+  // clicking a regular markdown link ([text](other.md)) pointing to another
+  // note in the vault — resolves the path relative to the current file and opens
+  // it in the tab, instead of letting Electron try to navigate/open in the OS default app
   openRelativeLink: async (href) => {
     const { active } = get()
     if (!active) return
@@ -751,7 +751,7 @@ export const useStore = create<State>((set, get) => ({
     return (await fn(tab.vaultId, tab.path, tab.content)) as string | null
   },
 
-  // mantém tabKey acessível para componentes
+  // keeps tabKey accessible to components
 }))
 
 export { tabKey }

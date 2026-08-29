@@ -1,86 +1,86 @@
 # md4all
 
-Editor Markdown WYSIWYG completo para desktop (Electron), no estilo Obsidian/Typora.
-Grava em qualquer pasta configurável — **disco local, iCloud Drive ou share SMB montado**.
+Complete WYSIWYG Markdown editor for desktop (Electron), in the style of Obsidian/Typora.
+Writes to any configurable folder — **local disk, iCloud Drive, or mounted SMB share**.
 
-## Instalação
+## Installation
 
 ### macOS
 
-O app é assinado ad-hoc (sem Apple Developer ID / notarização), então o Gatekeeper
-bloqueia o download com "damaged and can't be opened". O instalador abaixo baixa o
-DMG da release mais recente, copia para `/Applications` e remove a quarentena
-automaticamente — **sem precisar rodar `xattr -cr` manualmente**:
+The app is ad-hoc signed (no Apple Developer ID / notarization), so Gatekeeper
+blocks the download with "damaged and can't be opened". The installer below downloads the
+DMG from the latest release, copies it to `/Applications` and removes the quarantine
+automatically — **no need to run `xattr -cr` manually**:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/bajotto/md4all/main/scripts/install-mac.sh | bash
+curl -fsSL https://raw.githubusercontent.com/bajatto/md4all/main/scripts/install-mac.sh | bash
 ```
 
-Para uma versão específica:
+For a specific version:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/bajotto/md4all/main/scripts/install-mac.sh | bash -s -- v0.11.5
+curl -fsSL https://raw.githubusercontent.com/bajatto/md4all/main/scripts/install-mac.sh | bash -s -- v0.11.5
 ```
 
-> Alternativa manual: baixe o `.dmg` em [Releases](https://github.com/bajotto/md4all/releases),
-> copie o app para `/Applications` e rode `xattr -cr /Applications/md4all.app`.
+> Manual alternative: download the `.dmg` from [Releases](https://github.com/bajatto/md4all/releases),
+> copy the app to `/Applications` and run `xattr -cr /Applications/md4all.app`.
 
 ### Linux / Windows
 
-Baixe o instalador em [Releases](https://github.com/bajotto/md4all/releases)
-(`.AppImage`/`.deb` para Linux, `.exe` para Windows).
+Download the installer from [Releases](https://github.com/bajatto/md4all/releases)
+(`.AppImage`/`.deb` for Linux, `.exe` for Windows).
 
-## Recursos
+## Features
 
-- **WYSIWYG inline** (Milkdown Crepe): a sintaxe é escondida e o conteúdo renderiza no lugar.
-- **Toggle WYSIWYG ↔ Código** (CodeMirror 6) para editar o markdown cru.
-- **Imagens**: render no editor + colar/arrastar → salvas em `<vault>/assets/` com caminho
-  relativo portável. Servidas via protocolo interno `md4all-asset://`.
-- **Tabelas GFM** editáveis, blocos de código com syntax highlighting, listas de tarefas.
-- **Vault** = pasta. Vários vaults configuráveis; cada um aponta para qualquer caminho
-  (local, iCloud, SMB montado).
-- **Sidebar** com árvore de arquivos (criar/renomear/apagar), **abas**, **busca full-text**.
-- **Auto-save** com debounce + `Ctrl/Cmd+S`; detecção de mudanças externas (chokidar) com
-  recarga automática quando o arquivo aberto não tem edições pendentes.
-- **Export PDF e HTML** (markdown-it + highlight.js), com imagens embutidas como data-URI
-  para um arquivo portável. PDF gerado via `printToPDF` do Electron.
-- **Tema** claro/escuro.
+- **Inline WYSIWYG** (Milkdown Crepe): the syntax is hidden and the content renders in place.
+- **Toggle WYSIWYG ↔ Source** (CodeMirror 6) to edit raw markdown.
+- **Images**: rendered in the editor + paste/drag → saved to `<vault>/assets/` with a portable
+  relative path. Served via the internal `md4all-asset://` protocol.
+- **GFM Tables** editable, code blocks with syntax highlighting, task lists.
+- **Vault** = folder. Multiple configurable vaults; each points to any path
+  (local, iCloud, mounted SMB).
+- **Sidebar** with file tree (create/rename/delete), **tabs**, **full-text search**.
+- **Auto-save** with debounce + `Ctrl/Cmd+S`; external change detection (chokidar) with
+  automatic reload when the open file has no pending edits.
+- **Export PDF and HTML** (markdown-it + highlight.js), with images embedded as data-URI
+  for a portable file. PDF generated via Electron's `printToPDF`.
+- **Light/dark theme**.
 
-## Arquitetura
+## Architecture
 
-- `src/main/` — processo principal: I/O de filesystem (`vault.ts`), watcher (`watcher.ts`),
-  busca (`search.ts`), settings (`settings.ts`, via electron-store), handlers IPC (`ipc.ts`)
-  e o protocolo de imagens (`index.ts`). Toda escrita é validada contra path traversal.
-- `src/preload/` — `contextBridge` expõe uma API segura (`window.api`); sem `nodeIntegration`.
-- `src/renderer/` — React + Zustand. Editor em `components/Editor/` (Crepe/CodeMirror + toggle),
-  sidebar em `components/Sidebar/`, abas em `components/Tabs/`.
+- `src/main/` — main process: filesystem I/O (`vault.ts`), watcher (`watcher.ts`),
+  search (`search.ts`), settings (`settings.ts`, via electron-store), IPC handlers (`ipc.ts`)
+  and the image protocol (`index.ts`). All writes are validated against path traversal.
+- `src/preload/` — `contextBridge` exposes a secure API (`window.api`); no `nodeIntegration`.
+- `src/renderer/` — React + Zustand. Editor in `components/Editor/` (Crepe/CodeMirror + toggle),
+  sidebar in `components/Sidebar/`, tabs in `components/Tabs/`.
 
-## Desenvolvimento
+## Development
 
 ```bash
 npm install
-npm run dev        # abre a janela com HMR
-npm run typecheck  # checagem de tipos
-npm run build      # bundles em out/
+npm run dev        # opens the window with HMR
+npm run typecheck  # type checking
+npm run build      # bundles in out/
 ```
 
-### Empacotar
+### Packaging
 
 ```bash
-npm run build:linux   # ou build:mac / build:win (electron-builder)
+npm run build:linux   # or build:mac / build:win (electron-builder)
 ```
 
-## Armazenamento (local / iCloud / SMB)
+## Storage (local / iCloud / SMB)
 
-O app não fala protocolos de nuvem diretamente: ele lê/escreve em um **caminho de pasta**.
-Basta apontar o vault para a pasta certa:
+The app does not speak cloud protocols directly: it reads/writes to a **folder path**.
+Just point the vault to the correct folder:
 
-- **Local**: qualquer diretório.
-- **iCloud (macOS)**: pasta dentro de `~/Library/Mobile Documents/...`.
-- **SMB**: share já montado pelo SO (`/Volumes/...` no macOS, `/mnt/...` no Linux,
-  `\\host\share` no Windows). A sincronização fica a cargo do SO/serviço.
+- **Local**: any directory.
+- **iCloud (macOS)**: folder inside `~/Library/Mobile Documents/...`.
+- **SMB**: share already mounted by the OS (`/Volumes/...` on macOS, `/mnt/...` on Linux,
+  `\\host\share` on Windows). Synchronization is handled by the OS/service.
 
-## Observações conhecidas
+## Known issues
 
-- Ao salvar imagens, o Milkdown Crepe pode reescrever o texto-alt (`![alt]`) da imagem.
-  O caminho do arquivo é preservado como relativo.
+- When saving images, Milkdown Crepe may rewrite the image's alt-text (`![alt]`).
+  The file path is preserved as relative.

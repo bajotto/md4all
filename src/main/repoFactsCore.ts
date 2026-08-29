@@ -1,4 +1,4 @@
-// Lógica pura de extração/renderização de fatos do repositório (sem fs/Electron).
+// Pure logic for extracting/rendering repository facts (no fs/Electron).
 
 export interface RepoFacts {
   name?: string
@@ -18,7 +18,7 @@ const EXPORT_RE = [
   /func\s+([A-Za-z_]\w*)/g // go
 ]
 
-/** Extrai nomes de símbolos exportados/definidos (heurístico, agnóstico). */
+/** Extracts names of exported/defined symbols (heuristic, agnostic). */
 export function extractExports(content: string): string[] {
   const found = new Set<string>()
   for (const re of EXPORT_RE) {
@@ -35,14 +35,14 @@ export function extractExports(content: string): string[] {
   return [...found]
 }
 
-/** Renderiza o bloco determinístico do AGENTS.md (fatos, sem LLM). */
+/** Renders the deterministic block of AGENTS.md (facts, no LLM). */
 export function renderFactsBlock(facts: RepoFacts): string {
-  const lines: string[] = ['<!-- FATOS EXTRAÍDOS DO REPOSITÓRIO (determinístico, não editar à mão) -->']
+  const lines: string[] = ['<!-- FACTS EXTRACTED FROM THE REPOSITORY (deterministic, do not edit by hand) -->']
   if (facts.name) lines.push(`# ${facts.name}`, '')
   if (facts.description) lines.push(facts.description, '')
 
   if (Object.keys(facts.scripts).length) {
-    lines.push('## Comandos (package.json scripts)')
+    lines.push('## Commands (package.json scripts)')
     for (const [k, v] of Object.entries(facts.scripts)) lines.push(`- \`npm run ${k}\` — \`${v}\``)
     lines.push('')
   }
@@ -50,10 +50,10 @@ export function renderFactsBlock(facts: RepoFacts): string {
     lines.push('## Entry points', ...facts.entryPoints.map((e) => `- \`${e}\``), '')
   }
   if (facts.topDirs.length) {
-    lines.push('## Diretórios de topo', ...facts.topDirs.map((d) => `- \`${d}/\``), '')
+    lines.push('## Top-level directories', ...facts.topDirs.map((d) => `- \`${d}/\``), '')
   }
   if (facts.exports.length) {
-    lines.push('## Símbolos públicos (amostra)')
+    lines.push('## Public symbols (sample)')
     const byFile = new Map<string, string[]>()
     for (const e of facts.exports) {
       if (!byFile.has(e.path)) byFile.set(e.path, [])

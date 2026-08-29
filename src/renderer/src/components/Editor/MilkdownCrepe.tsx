@@ -13,8 +13,8 @@ import { pkmTokensPlugin } from '../../editor/pkmTokens'
 import { colorPlugins } from '../../editor/colorMark'
 import type { SearchController } from '../../editor/search'
 
-// link markdown comum ([texto](caminho.md)) apontando para outro arquivo do
-// vault: sem esquema (http:, mailto:, md4all-asset:...) e terminando em .md
+// common markdown link ([text](path.md)) pointing to another file in the
+// vault: no scheme (http:, mailto:, md4all-asset:...) and ending in .md
 const LINK_SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i
 const MD_LINK_RE = /\.(md|markdown|mdown|mkd)(#.*)?$/i
 
@@ -23,33 +23,33 @@ function isInternalMdLink(href: string): boolean {
   return MD_LINK_RE.test(href)
 }
 
-/** API imperativa exposta pelo editor para a toolbar de formatação e busca. */
+/** Imperative API exposed by the editor for the formatting toolbar and search. */
 export interface EditorApi {
-  // dispara um comando Milkdown (ex.: toggleStrongCommand.key) com payload opcional
+  // triggers a Milkdown command (e.g. toggleStrongCommand.key) with optional payload
   run: (key: unknown, payload?: unknown) => void
   focus: () => void
-  // rola até o n-ésimo heading (0-based) do documento — usado pelo sumário
+  // scrolls to the nth heading (0-based) in the document — used by the outline
   scrollToHeading: (index: number) => void
   search: SearchController
 }
 
 interface Props {
   vaultId: string
-  // conteúdo inicial em forma de armazenamento (caminhos de imagem relativos)
+  // initial content in storage form (relative image paths)
   initialContent: string
   onChange: (storageMarkdown: string) => void
   apiRef?: MutableRefObject<EditorApi | null>
-  // clique em [[wikilink]] e #tag (PKM)
+  // click on [[wikilink]] and #tag (PKM)
   onWikilink?: (target: string) => void
   onTag?: (tag: string) => void
-  // clique em link markdown comum apontando para outra nota do vault
+  // click on common markdown link pointing to another note in the vault
   onLinkClick?: (href: string) => void
 }
 
 /**
- * Editor WYSIWYG inline (estilo Typora) baseado em Milkdown Crepe.
- * Traz tabelas GFM editáveis, blocos de código com CodeMirror, listas de
- * tarefas, drag handles e upload de imagens. Recriado a cada arquivo via `key`.
+ * Inline WYSIWYG editor (Typora-style) based on Milkdown Crepe.
+ * Brings editable GFM tables, code blocks with CodeMirror, task lists,
+ * drag handles and image uploads. Recreated per file via `key`.
  */
 export default function MilkdownCrepe({
   vaultId,
@@ -98,19 +98,19 @@ export default function MilkdownCrepe({
     if (!host) return
 
     let destroyed = false
-    // Só passamos a propagar mudanças DEPOIS que o editor terminou de carregar.
-    // O Crepe dispara markdownUpdated durante a montagem (parse->serialize do
-    // conteúdo inicial), o que reescreveria o arquivo de forma normalizada
-    // (escapando `\`, virando `---`->`***`, inserindo `<br/>`) só por abri-lo.
-    // Ignorando essa emissão inicial, o autosave nunca corrompe um arquivo
-    // que o usuário apenas visualizou.
+    // We only start propagating changes AFTER the editor has finished loading.
+    // Crepe fires markdownUpdated during mount (parse->serialize of the
+    // initial content), which would rewrite the file in a normalized form
+    // (escaping `\`, turning `---`->`***`, inserting `<br/>`) just by opening it.
+    // By ignoring this initial emission, autosave never corrupts a file
+    // that the user merely viewed.
     let loaded = false
     const crepe = new Crepe({
       root: host,
       defaultValue: toDisplay(initialContent, vaultId),
       featureConfigs: {
         [Crepe.Feature.ImageBlock]: {
-          // colar/arrastar/upload de imagem -> salva em <vault>/assets/
+          // paste/drag/upload image -> saves to <vault>/assets/
           onUpload: async (file: File): Promise<string> => {
             const buf = new Uint8Array(await file.arrayBuffer())
             const rel = (await window.api.saveAsset(vaultId, file.name, buf)) as string
@@ -120,7 +120,7 @@ export default function MilkdownCrepe({
       }
     })
 
-    // registra a mark de cor + round-trip remark antes de criar o editor
+    // registers the color mark + remark round-trip before creating the editor
     crepe.editor.use(colorPlugins)
 
     crepe.on((listener) => {
@@ -132,9 +132,9 @@ export default function MilkdownCrepe({
 
     void crepe.create().then(() => {
       if (destroyed) return
-      // A emissão inicial do parse acontece de forma síncrona durante create();
-      // ao chegar aqui ela já passou (e foi ignorada). Liberamos no próximo
-      // tick por segurança, usando setTimeout (dispara mesmo em segundo plano).
+      // The initial parse emission happens synchronously during create();
+      // by the time we get here it has already passed (and was ignored). We
+      // release on the next tick for safety, using setTimeout (fires even in background).
       setTimeout(() => {
         loaded = true
       }, 0)
@@ -147,7 +147,7 @@ export default function MilkdownCrepe({
           return null
         }
       }
-      // injeta o plugin de busca na view já criada (reconfigure)
+      // injects the search plugin into the already created view (reconfigure)
       const view = getView()
       if (view) {
         view.updateState(
@@ -193,8 +193,8 @@ export default function MilkdownCrepe({
       if (apiRef) apiRef.current = null
       void crepe.destroy()
     }
-    // initialContent intencionalmente fora das deps: o remount é controlado
-    // pela `key` no componente pai (troca de arquivo).
+    // initialContent intentionally excluded from deps: remount is controlled
+    // by the `key` in the parent component (file switch).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vaultId])
 

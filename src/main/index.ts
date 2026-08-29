@@ -7,7 +7,7 @@ import { getVault, isSftp, readAssetBinary, resolveInVault } from './vault'
 
 const PROTOCOL = 'md4all-asset'
 
-// O esquema precisa ser registrado como privilegiado antes do app ficar pronto
+// The scheme must be registered as privileged before the app is ready
 protocol.registerSchemesAsPrivileged([
   {
     scheme: PROTOCOL,
@@ -43,9 +43,9 @@ function createWindow(): void {
 }
 
 /**
- * Serve imagens do vault: md4all-asset://<vaultId>/<caminho-relativo>
- * O host da URL é o vaultId; o restante é resolvido com proteção contra
- * path traversal por resolveInVault.
+ * Serves vault images: md4all-asset://<vaultId>/<relative-path>
+ * The URL host is the vaultId; the rest is resolved with protection against
+ * path traversal by resolveInVault.
  */
 function registerAssetProtocol(): void {
   protocol.handle(PROTOCOL, async (request) => {
@@ -55,7 +55,7 @@ function registerAssetProtocol(): void {
       const relPath = decodeURIComponent(url.pathname).replace(/^[/\\]+/, '')
       const vault = getVault(vaultId)
       if (isSftp(vault)) {
-        // baixa os bytes remotos e devolve como resposta
+        // downloads the remote bytes and returns them as a response
         const buf = await readAssetBinary(vaultId, relPath)
         return new Response(new Uint8Array(buf))
       }

@@ -19,39 +19,39 @@ export default function Toolbar({ fileName, dirty }: Props): JSX.Element {
 
   const handleExport = async (format: 'html' | 'pdf'): Promise<void> => {
     const saved = await exportActive(format)
-    if (saved) await window.api.confirm(`Exportado para:\n${saved}`)
+    if (saved) await window.api.confirm(`Exported to:\n${saved}`)
   }
 
   return (
     <div className="editor-toolbar">
       <div className="editor-title">
         <span className="editor-name">{fileName}</span>
-        {dirty ? <span className="dot-dirty" title="Não salvo" /> : null}
+        {dirty ? <span className="dot-dirty" title="Unsaved" /> : null}
       </div>
       <div className="toolbar-right">
         <button
           className={`outline-toggle${searchPanelOpen ? ' active' : ''}`}
           onClick={toggleSearchPanel}
-          title="Buscar (Cmd/Ctrl+F)"
+          title="Search (Cmd/Ctrl+F)"
         >
-          🔍 Buscar
+          🔍 Search
         </button>
         <button
           className={`outline-toggle${outlineOpen ? ' active' : ''}`}
           onClick={toggleOutline}
-          title="Mostrar/ocultar sumário"
+          title="Show/hide outline"
         >
-          ☰ Tópicos
+          ☰ Topics
         </button>
         <div className="export-group">
-          <button onClick={() => void handleExport('pdf')} title="Exportar para PDF">
+          <button onClick={() => void handleExport('pdf')} title="Export to PDF">
             PDF
           </button>
-          <button onClick={() => void handleExport('html')} title="Exportar para HTML">
+          <button onClick={() => void handleExport('html')} title="Export to HTML">
             HTML
           </button>
         </div>
-        <div className="mode-toggle" role="group" aria-label="Modo de edição">
+        <div className="mode-toggle" role="group" aria-label="Edit mode">
           <button
             className={editorMode === 'wysiwyg' ? 'active' : ''}
             onClick={() => select('wysiwyg')}
@@ -62,7 +62,7 @@ export default function Toolbar({ fileName, dirty }: Props): JSX.Element {
             className={editorMode === 'source' ? 'active' : ''}
             onClick={() => select('source')}
           >
-            Código
+            Source
           </button>
         </div>
       </div>

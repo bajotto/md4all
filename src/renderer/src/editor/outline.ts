@@ -1,32 +1,32 @@
-/** Um item do sumário (heading) extraído do markdown do documento ativo. */
+/** An outline item (heading) extracted from the active document's markdown. */
 export interface OutlineItem {
   level: number // 1..6
-  text: string // texto já limpo de marcação inline (para exibição)
-  line: number // linha 1-based no source (navegação no modo Código)
-  index: number // ordinal 0-based entre os headings (navegação no WYSIWYG)
+  text: string // text already stripped of inline markup (for display)
+  line: number // 1-based line in the source (navigation in Code mode)
+  index: number // 0-based ordinal among headings (navigation in WYSIWYG)
 }
 
-/** Remove a marcação inline mais comum para exibir o título de forma legível. */
+/** Removes the most common inline markup to display the heading legibly. */
 function stripInline(s: string): string {
   return s
-    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1') // links/imagens -> texto
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1') // links/images -> text
     .replace(/\[\[([^\]|]*)(?:\|([^\]]*))?\]\]/g, (_m, a, b) => b || a) // wikilinks
-    .replace(/(\*\*|__)(.*?)\1/g, '$2') // negrito
-    .replace(/(\*|_)(.*?)\1/g, '$2') // itálico
-    .replace(/~~(.*?)~~/g, '$1') // tachado
-    .replace(/`([^`]*)`/g, '$1') // código inline
-    .replace(/<[^>]+>/g, '') // tags html inline
+    .replace(/(\*\*|__)(.*?)\1/g, '$2') // bold
+    .replace(/(\*|_)(.*?)\1/g, '$2') // italic
+    .replace(/~~(.*?)~~/g, '$1') // strikethrough
+    .replace(/`([^`]*)`/g, '$1') // inline code
+    .replace(/<[^>]+>/g, '') // inline html tags
     .trim()
 }
 
 /**
- * Extrai os headings ATX (`#`..`######`) do markdown, ignorando os que
- * aparecem dentro de blocos de código cercados (``` ou ~~~).
+ * Extracts ATX headings (`#`..`######`) from markdown, ignoring those
+ * that appear inside fenced code blocks (``` or ~~~).
  */
 export function parseOutline(markdown: string): OutlineItem[] {
   const lines = markdown.split('\n')
   const items: OutlineItem[] = []
-  let fence: string | null = null // marcador de abertura do bloco de código, se aberto
+  let fence: string | null = null // opening marker of the code block, if open
   let index = 0
 
   for (let i = 0; i < lines.length; i++) {

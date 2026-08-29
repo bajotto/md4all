@@ -5,11 +5,11 @@ interface Props {
   onSelect: (ref: BacklinkRef) => void
 }
 
-/** Painel "Mencionada em" — notas que apontam para o arquivo ativo via [[wikilink]]. */
+/** "Mentioned in" panel — notes that point to the active file via [[wikilink]]. */
 export default function Backlinks({ items, onSelect }: Props): JSX.Element {
   return (
     <section className="backlinks">
-      <div className="outline-head">Mencionada em ({items.length})</div>
+      <div className="outline-head">Mentioned in ({items.length})</div>
       <nav className="outline-list">
         {items.map((it) => (
           <button

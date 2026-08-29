@@ -3,7 +3,7 @@ import type { SearchController, SearchOccurrence } from '../../editor/search'
 
 interface Props {
   getController: () => SearchController | null
-  revision: string // muda ao trocar de arquivo/modo -> reaplica a busca
+  revision: string // changes when switching file/mode -> reapplies the search
   startWithReplace: boolean
   onClose: () => void
 }
@@ -33,20 +33,20 @@ export default function FindBar({ getController, revision, startWithReplace, onC
     sync()
   }
 
-  // foca ao abrir
+  // focuses on open
   useEffect(() => {
     findRef.current?.focus()
     findRef.current?.select()
   }, [])
 
-  // reaplica quando query/opções/arquivo mudam
+  // reapplies when query/options/file change
   useEffect(() => {
     const t = setTimeout(apply, 120)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, caseSensitive, regex, revision])
 
-  // limpa o destaque ao desmontar
+  // clears highlight on unmount
   useEffect(() => {
     return () => getController()?.clear()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -67,7 +67,7 @@ export default function FindBar({ getController, revision, startWithReplace, onC
   const doReplaceAll = (): void => {
     const n = getController()?.replaceAll(replace) ?? 0
     sync()
-    if (n > 0) void window.api.confirm(`${n} ocorrência(s) substituída(s).`)
+    if (n > 0) void window.api.confirm(`${n} occurrence(s) replaced.`)
   }
   const openList = (): void => {
     setOccurrences(getController()?.occurrences() ?? [])
@@ -87,31 +87,31 @@ export default function FindBar({ getController, revision, startWithReplace, onC
   return (
     <div className="find-bar">
       <div className="find-row">
-        <button className="find-toggle" title={showReplace ? 'Ocultar substituição' : 'Mostrar substituição'} onClick={() => setShowReplace((v) => !v)}>
+        <button className="find-toggle" title={showReplace ? 'Hide replace' : 'Show replace'} onClick={() => setShowReplace((v) => !v)}>
           {showReplace ? '▾' : '▸'}
         </button>
         <input
           ref={findRef}
           className="find-input"
-          placeholder="Localizar"
+          placeholder="Find"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={onFindKey}
         />
         <span className="find-count">{count ? `${current + 1}/${count}` : '0/0'}</span>
-        <button className="find-btn" title="Anterior (Shift+Enter)" onClick={prev} disabled={!count}>◀</button>
-        <button className="find-btn" title="Próximo (Enter)" onClick={next} disabled={!count}>▶</button>
-        <button className="find-btn" title="Diferenciar maiúsc./minúsc." onClick={() => setCaseSensitive((v) => !v)} aria-pressed={caseSensitive} data-on={caseSensitive}>Aa</button>
-        <button className="find-btn" title="Expressão regular" onClick={() => setRegex((v) => !v)} aria-pressed={regex} data-on={regex}>.*</button>
-        <button className="find-btn" title="Listar todas as ocorrências" onClick={openList} disabled={!count}>Listar</button>
-        <button className="find-btn find-close" title="Fechar (Esc)" onClick={onClose}>✕</button>
+        <button className="find-btn" title="Previous (Shift+Enter)" onClick={prev} disabled={!count}>◀</button>
+        <button className="find-btn" title="Next (Enter)" onClick={next} disabled={!count}>▶</button>
+        <button className="find-btn" title="Match case" onClick={() => setCaseSensitive((v) => !v)} aria-pressed={caseSensitive} data-on={caseSensitive}>Aa</button>
+        <button className="find-btn" title="Regular expression" onClick={() => setRegex((v) => !v)} aria-pressed={regex} data-on={regex}>.*</button>
+        <button className="find-btn" title="List all occurrences" onClick={openList} disabled={!count}>List</button>
+        <button className="find-btn find-close" title="Close (Esc)" onClick={onClose}>✕</button>
       </div>
       {showReplace ? (
         <div className="find-row">
           <span className="find-toggle" />
           <input
             className="find-input"
-            placeholder="Substituir por"
+            placeholder="Replace with"
             value={replace}
             onChange={(e) => setReplace(e.target.value)}
             onKeyDown={(e) => {
@@ -121,15 +121,15 @@ export default function FindBar({ getController, revision, startWithReplace, onC
               } else if (e.key === 'Escape') onClose()
             }}
           />
-          <button className="find-btn" onClick={doReplace} disabled={!count}>Substituir</button>
-          <button className="find-btn" onClick={doReplaceAll} disabled={!count}>Todas</button>
+          <button className="find-btn" onClick={doReplace} disabled={!count}>Replace</button>
+          <button className="find-btn" onClick={doReplaceAll} disabled={!count}>All</button>
         </div>
       ) : null}
 
       {listOpen ? (
         <div className="modal-overlay" onClick={() => setListOpen(false)}>
           <div className="modal-box find-list" onClick={(e) => e.stopPropagation()}>
-            <p className="modal-title">{occurrences.length} ocorrência(s) de “{query}”</p>
+            <p className="modal-title">{occurrences.length} occurrence(s) of “{query}”</p>
             <div className="find-list-items">
               {occurrences.map((o) => (
                 <div
@@ -146,7 +146,7 @@ export default function FindBar({ getController, revision, startWithReplace, onC
               ))}
             </div>
             <div className="modal-actions">
-              <button className="modal-btn-ok" onClick={() => setListOpen(false)}>Fechar</button>
+              <button className="modal-btn-ok" onClick={() => setListOpen(false)}>Close</button>
             </div>
           </div>
         </div>

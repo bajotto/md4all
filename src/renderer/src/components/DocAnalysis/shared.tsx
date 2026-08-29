@@ -21,32 +21,32 @@ export function fmtCost(usd: number): string {
   return '$' + usd.toFixed(usd < 1 ? 3 : 2)
 }
 
-/** Resumo de consumo (tokens in/out + custo) reutilizável entre os modos. */
+/** Reusable usage summary (in/out tokens + cost) across modes. */
 export function UsageLine({ usage, prefix }: { usage: LlmUsage | null; prefix?: string }): JSX.Element | null {
   if (!usage) return null
   return (
     <span className="doc-usage-line">
       {prefix ? prefix + ' ' : ''}in {fmtTokens(usage.promptTokens)} · out {fmtTokens(usage.completionTokens)} ·{' '}
-      {usage.calls} chamada{usage.calls === 1 ? '' : 's'} · <strong>~{fmtCost(usage.cost)}</strong>
+      {usage.calls} call{usage.calls === 1 ? '' : 's'} · <strong>~{fmtCost(usage.cost)}</strong>
     </span>
   )
 }
 
-export const SEVERITY_LABEL: Record<Severity, string> = { high: 'alta', medium: 'média', low: 'baixa' }
+export const SEVERITY_LABEL: Record<Severity, string> = { high: 'high', medium: 'medium', low: 'low' }
 export const VERIFY_LABEL: Record<VerifyState, string> = {
-  verified: '✓ verificado',
-  unverified: '⚠ não verificado',
-  refuted: '✗ refutado'
+  verified: '✓ verified',
+  unverified: '⚠ unverified',
+  refuted: '✗ refuted'
 }
 
-/** Assina o progresso emitido pelo main enquanto o componente está montado. */
+/** Subscribes to progress emitted by main while the component is mounted. */
 export function useDocProgress(): { msg: string; pct?: number } | null {
   const [progress, setProgress] = useState<{ msg: string; pct?: number } | null>(null)
   useEffect(() => window.api.onDocProgress((p) => setProgress(p)), [])
   return progress
 }
 
-/** Verifica se a LLM está configurada (token + 2 modelos). */
+/** Checks if the LLM is configured (token + 2 models). */
 export function useLlmConfigured(): boolean | null {
   const [ok, setOk] = useState<boolean | null>(null)
   useEffect(() => {
@@ -66,7 +66,7 @@ export function Spinner({ msg, pct }: { msg?: string; pct?: number }): JSX.Eleme
   return (
     <div className="doc-center">
       <div className="doc-spinner" />
-      <p>{msg ?? 'Processando…'}</p>
+      <p>{msg ?? 'Processing…'}</p>
       {pct != null ? (
         <div className="doc-progress">
           <div className="doc-progress-bar" style={{ width: `${pct}%` }} />

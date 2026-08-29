@@ -15,24 +15,24 @@ const md = new MarkdownIt({
       try {
         return hljs.highlight(code, { language: lang }).value
       } catch {
-        /* cai no escape padrão */
+        /* falls through to default escape */
       }
     }
     return MarkdownIt().utils.escapeHtml(code)
   }
 })
 
-// Math/LaTeX com os mesmos delimitadores do editor ($ inline, $$ em bloco).
-// Saída em MathML: renderiza nativamente no Chromium (printToPDF) e em
-// navegadores modernos, sem precisar embutir CSS/fontes do KaTeX.
-// O interop do default export difere entre o bundle (objeto { default }) e o
-// node puro (a própria função), então normalizamos aqui.
+// Math/LaTeX with the same delimiters as the editor ($ inline, $$ block).
+// MathML output: renders natively in Chromium (printToPDF) and in
+// modern browsers, without needing to embed KaTeX CSS/fonts.
+// The default export interop differs between the bundle (object { default }) and
+// pure node (the function itself), so we normalize it here.
 const katexPlugin = (katexImport as { default?: typeof katexImport }).default ?? katexImport
 md.use(katexPlugin, { throwOnError: false, output: 'mathml' })
 
-// Blocos ```mermaid``` viram <pre class="mermaid"> com o código como texto;
-// o diagrama é renderizado para SVG numa janela Chromium oculta (ver abaixo),
-// deixando o HTML/PDF exportado portável (SVG embutido, sem script).
+// ```mermaid``` blocks become <pre class="mermaid"> with the code as text;
+// the diagram is rendered to SVG in a hidden Chromium window (see below),
+// making the exported HTML/PDF portable (embedded SVG, no script).
 const defaultFence = md.renderer.rules.fence
 md.renderer.rules.fence = (tokens, idx, options, env, self): string => {
   const info = tokens[idx].info.trim().toLowerCase()
@@ -44,8 +44,8 @@ md.renderer.rules.fence = (tokens, idx, options, env, self): string => {
     : self.renderToken(tokens, idx, options)
 }
 
-// Wikilinks [[alvo]] / [[alvo|alias]] → texto exibido estilizado (documento
-// estático: não há destino navegável garantido no HTML exportado).
+// Wikilinks [[target]] / [[target|alias]] → styled display text (static
+// document: no guaranteed navigable destination in the exported HTML).
 md.inline.ruler.before('link', 'wikilink', (state, silent) => {
   const start = state.pos
   if (state.src.charCodeAt(start) !== 0x5b || state.src.charCodeAt(start + 1) !== 0x5b) return false
@@ -79,7 +79,7 @@ function isRemote(src: string): boolean {
   return /^(https?:|data:)/i.test(src)
 }
 
-/** Lê as imagens locais referenciadas e as embute como data-URI (HTML portável). */
+/** Reads referenced local images and embeds them as data-URIs (portable HTML). */
 async function inlineImages(html: string, vaultId: string): Promise<string> {
   const matches = [...html.matchAll(/<img\b[^>]*\bsrc="([^"]+)"[^>]*>/gi)]
   let out = html
@@ -97,7 +97,7 @@ async function inlineImages(html: string, vaultId: string): Promise<string> {
       const dataUri = `data:${mime};base64,${bytes.toString('base64')}`
       out = out.split(`src="${src}"`).join(`src="${dataUri}"`)
     } catch {
-      /* imagem ausente: mantém o src original */
+      /* missing image: keeps the original src */
     }
   }
   return out
@@ -133,7 +133,7 @@ math { font-size: 1.05em; }
 .wikilink { color: #3b7dd8; border-bottom: 1px dashed #3b7dd8; }
 `
 
-/** Monta um documento HTML completo a partir do markdown (forma de armazenamento). */
+/** Builds a complete HTML document from the markdown (storage form). */
 export async function renderDocument(
   vaultId: string,
   title: string,
@@ -143,7 +143,7 @@ export async function renderDocument(
   const inlined = await inlineImages(body, vaultId)
   const safeTitle = md.utils.escapeHtml(title)
   return `<!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8">
+<html lang="en"><head><meta charset="utf-8">
 <title>${safeTitle}</title>
 <style>${STYLES}</style></head>
 <body>${inlined}</body></html>`
@@ -159,7 +159,7 @@ function hasMermaid(html: string): boolean {
   return html.includes('class="mermaid"')
 }
 
-// bundle UMD do mermaid, lido sob demanda e mantido em cache
+// mermaid UMD bundle, read on demand and kept in cache
 let mermaidScript: string | null = null
 async function loadMermaidScript(): Promise<string> {
   if (mermaidScript == null) {
@@ -169,10 +169,10 @@ async function loadMermaidScript(): Promise<string> {
   return mermaidScript
 }
 
-/** Renderiza os <pre class="mermaid"> de uma janela já carregada (em SVG inline). */
+/** Renders the <pre class="mermaid"> in an already loaded window (as inline SVG). */
 async function renderMermaidIn(win: BrowserWindow): Promise<void> {
   const script = await loadMermaidScript()
-  // `;0` garante um valor de retorno clonável (o UMD avalia para o objeto mermaid)
+  // `;0` ensures a cloneable return value (the UMD evaluates to the mermaid object)
   await win.webContents.executeJavaScript(`${script}\n;0`)
   await win.webContents.executeJavaScript(
     `(async () => {
@@ -195,7 +195,7 @@ export async function exportHtml(
   })
   if (result.canceled || !result.filePath) return null
   let html = await renderDocument(vaultId, path.basename(relPath), markdown)
-  // diagramas mermaid: renderiza numa janela oculta e embute o SVG resultante
+  // mermaid diagrams: render in a hidden window and embed the resulting SVG
   if (hasMermaid(html)) {
     const win = new BrowserWindow({ show: false, webPreferences: { sandbox: true } })
     try {

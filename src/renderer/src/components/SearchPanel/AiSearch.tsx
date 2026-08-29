@@ -3,11 +3,11 @@ import { useStore } from '../../store/useStore'
 import type { LlmConfigView } from '../../types'
 
 interface Props {
-  /** Query compartilhada com a busca literal (vem do input do SearchPanel). */
+  /** Query shared with the literal search (comes from the SearchPanel input). */
   query: string
 }
 
-/** Seção de resultados AI no modo Híbrida: submetido explicitamente (custa tokens). */
+/** AI results section in Hybrid mode: explicitly submitted (costs tokens). */
 export default function AiSearch({ query }: Props): JSX.Element {
   const runAiSearch = useStore((s) => s.runAiSearch)
   const results = useStore((s) => s.aiResults)
@@ -32,7 +32,7 @@ export default function AiSearch({ query }: Props): JSX.Element {
     }
   }, [])
 
-  // recarrega config quando o modal de LLM fechar (usuário pode ter salvo novo token/modelo)
+  // reloads config when the LLM modal closes (user may have saved a new token/model)
   useEffect(() => {
     if (llmSettingsOpen) return
     void (async () => {
@@ -50,8 +50,8 @@ export default function AiSearch({ query }: Props): JSX.Element {
     return off
   }, [])
 
-  // limpa a mensagem de progresso da busca anterior assim que uma nova começa
-  // (cobre tanto o clique em "Buscar" quanto o Enter disparado no SearchPanel)
+  // clears the progress message from the previous search as soon as a new one starts
+  // (covers both clicking "Search" and pressing Enter in the SearchPanel)
   useEffect(() => {
     if (searching) setProgress(null)
   }, [searching])
@@ -67,33 +67,33 @@ export default function AiSearch({ query }: Props): JSX.Element {
   return (
     <div className="ai-search-section">
       <div className="search-section-label">
-        <span>Arquivos relevantes (AI)</span>
+        <span>Relevant files (AI)</span>
         {configured ? (
           <button className="ai-search-btn-inline" onClick={submit} disabled={!canSearch}>
-            {searching ? '…' : 'Buscar'}
+            {searching ? '…' : 'Search'}
           </button>
         ) : null}
       </div>
 
       {!configured ? (
         <div className="ai-cta">
-          <p>Configure a LLM (OpenRouter) para usar a busca híbrida.</p>
+          <p>Configure the LLM (OpenRouter) to use hybrid search.</p>
           <button className="ai-cta-btn" onClick={() => setLlmSettingsOpen(true)}>
-            ⚙ Configurar LLM
+            ⚙ Configure LLM
           </button>
         </div>
       ) : (
         <>
           <p className="ai-model-hint">
-            Modelo: <code>{cfg?.modelPrimary}</code>
+            Model: <code>{cfg?.modelPrimary}</code>
           </p>
           <div className="search-results">
             {searching ? (
-              <p className="search-status">{progress ?? 'Consultando a LLM…'}</p>
+              <p className="search-status">{progress ?? 'Querying the LLM…'}</p>
             ) : error ? (
               <p className="search-status search-error">{error}</p>
             ) : results.length === 0 && aiQuery.trim() ? (
-              <p className="search-status">Nenhum documento relevante encontrado.</p>
+              <p className="search-status">No relevant documents found.</p>
             ) : (
               results.map((hit, i) => (
                 <div
@@ -113,7 +113,7 @@ export default function AiSearch({ query }: Props): JSX.Element {
           </div>
           {usage && !searching ? (
             <p className="search-usage">
-              {usage.calls} chamada{usage.calls === 1 ? '' : 's'} ·{' '}
+              {usage.calls} call{usage.calls === 1 ? '' : 's'} ·{' '}
               {usage.promptTokens + usage.completionTokens} tokens · ${usage.cost.toFixed(4)}
             </p>
           ) : null}

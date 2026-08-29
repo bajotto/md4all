@@ -2,32 +2,32 @@ import { describe, it, expect } from 'vitest'
 import { extractRefs, normRef } from './doccheckCore'
 
 describe('extractRefs', () => {
-  it('pega âncoras [src: …] e links markdown com extensão', () => {
-    const md = 'Ver [auth](src/auth.ts) e [src: src/server.ts:PORT].'
+  it('captures [src: …] anchors and markdown links with extension', () => {
+    const md = 'See [auth](src/auth.ts) and [src: src/server.ts:PORT].'
     const refs = extractRefs(md)
     expect(refs).toContain('src/auth.ts')
     expect(refs).toContain('src/server.ts:PORT')
   })
 
-  it('ignora URLs, âncoras internas e texto sem extensão', () => {
-    const md = '[site](https://x.com) [topo](#intro) [texto](algo) [npm](npm run x)'
+  it('ignores URLs, internal anchors and text without extension', () => {
+    const md = '[site](https://x.com) [top](#intro) [text](something) [npm](npm run x)'
     expect(extractRefs(md)).toEqual([])
   })
 
-  it('não confunde texto comum com referência', () => {
-    expect(extractRefs('Rode `npm test` e veja o resultado.')).toEqual([])
+  it('does not confuse plain text with a reference', () => {
+    expect(extractRefs('Run `npm test` and see the result.')).toEqual([])
   })
 })
 
 describe('normRef', () => {
-  it('separa caminho de símbolo', () => {
+  it('separates path from symbol', () => {
     expect(normRef('src/auth.ts:login')).toEqual({ file: 'src/auth.ts', symbol: 'login' })
   })
-  it('trata :linha numérica como linha, não símbolo', () => {
+  it('treats numeric :line as line, not symbol', () => {
     expect(normRef('src/auth.ts:42')).toEqual({ file: 'src/auth.ts' })
     expect(normRef('src/auth.ts:L42')).toEqual({ file: 'src/auth.ts' })
   })
-  it('remove ./ e fragmento #', () => {
+  it('removes ./ and # fragment', () => {
     expect(normRef('./docs/x.md#sec')).toEqual({ file: 'docs/x.md' })
   })
 })

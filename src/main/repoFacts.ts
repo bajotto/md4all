@@ -12,7 +12,7 @@ export async function collectRepoFacts(vaultId: string): Promise<RepoFacts> {
     count: 0
   }
 
-  // package.json (fatos de build/test/run + entry)
+  // package.json (build/test/run facts + entry)
   try {
     const pkgRaw = await readFile(vaultId, 'package.json')
     const pkg = JSON.parse(pkgRaw) as {
@@ -30,10 +30,10 @@ export async function collectRepoFacts(vaultId: string): Promise<RepoFacts> {
     else if (pkg.bin && typeof pkg.bin === 'object')
       facts.entryPoints.push(...Object.values(pkg.bin as Record<string, string>))
   } catch {
-    /* sem package.json: tudo bem */
+    /* no package.json: that's fine */
   }
 
-  // diretórios de topo (a partir dos caminhos de código)
+  // top-level directories (from code paths)
   const codePaths = await collectPaths(vaultId, CODE_EXTS)
   const dirs = new Set<string>()
   for (const p of codePaths) {
@@ -42,7 +42,7 @@ export async function collectRepoFacts(vaultId: string): Promise<RepoFacts> {
   }
   facts.topDirs = [...dirs].sort()
 
-  // exports públicos (heurístico, agnóstico) — limita p/ não estourar
+  // public exports (heuristic, agnostic) — limited to avoid overflow
   const MAX_FILES = 200
   const MAX_EXPORTS = 400
   for (const p of codePaths.slice(0, MAX_FILES)) {
@@ -54,7 +54,7 @@ export async function collectRepoFacts(vaultId: string): Promise<RepoFacts> {
         facts.exports.push({ path: p, symbol: sym })
       }
     } catch {
-      /* ignora */
+      /* ignore */
     }
   }
 

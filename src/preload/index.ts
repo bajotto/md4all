@@ -21,7 +21,7 @@ const api = {
   browseSftpClose: () => ipcRenderer.invoke('vault:browseClose'),
   pickKey: () => ipcRenderer.invoke('vault:pickKey'),
 
-  // arquivos
+  // files
   tree: (vaultId: string) => ipcRenderer.invoke('file:tree', vaultId),
   listDir: (vaultId: string, relPath: string) => ipcRenderer.invoke('file:listDir', vaultId, relPath),
   hasMarkdown: (vaultId: string, relPath: string) =>
@@ -39,11 +39,11 @@ const api = {
     ipcRenderer.invoke('file:rename', vaultId, from, to),
   remove: (vaultId: string, relPath: string) => ipcRenderer.invoke('file:remove', vaultId, relPath),
 
-  // imagens
+  // images
   saveAsset: (vaultId: string, fileName: string, data: Uint8Array) =>
     ipcRenderer.invoke('asset:save', vaultId, fileName, data),
 
-  // busca
+  // search
   search: (vaultId: string, query: string) => ipcRenderer.invoke('search:run', vaultId, query),
   aiSearch: (vaultId: string, query: string) => ipcRenderer.invoke('search:ai', vaultId, query),
   onAiSearchProgress: (cb: (payload: { msg: string; pct?: number }) => void) => {
@@ -54,7 +54,7 @@ const api = {
     }
   },
 
-  // índice (wikilinks / tags / backlinks)
+  // index (wikilinks / tags / backlinks)
   indexBuild: (vaultId: string) => ipcRenderer.invoke('index:build', vaultId),
   indexBacklinks: (vaultId: string, relPath: string) =>
     ipcRenderer.invoke('index:backlinks', vaultId, relPath),
@@ -65,7 +65,7 @@ const api = {
     ipcRenderer.invoke('index:resolve', vaultId, target),
   indexNotes: (vaultId: string) => ipcRenderer.invoke('index:notes', vaultId),
 
-  // dialogs nativos
+  // native dialogs
   confirm: (message: string) => ipcRenderer.invoke('dialog:confirm', message),
   showError: (message: string) => ipcRenderer.invoke('dialog:error', message),
 
@@ -75,7 +75,7 @@ const api = {
   exportPdf: (vaultId: string, relPath: string, markdown: string) =>
     ipcRenderer.invoke('export:pdf', vaultId, relPath, markdown),
 
-  // LLM (OpenRouter) + análise de documentação
+  // LLM (OpenRouter) + documentation analysis
   llmListModels: (token?: string) => ipcRenderer.invoke('llm:listModels', token),
   llmGetConfig: () => ipcRenderer.invoke('llm:getConfig'),
   llmValidate: (input: unknown) => ipcRenderer.invoke('llm:validate', input),
@@ -102,7 +102,7 @@ const api = {
     }
   },
 
-  // comandos do menu nativo (find/replace)
+  // native menu commands (find/replace)
   onMenu: (cb: (cmd: string) => void) => {
     const listener = (_e: unknown, cmd: string): void => cb(cmd)
     ipcRenderer.on('menu:command', listener)
@@ -111,7 +111,7 @@ const api = {
     }
   },
 
-  // eventos de filesystem externos
+  // external filesystem events
   onFsEvent: (cb: (payload: { type: string; path: string; vaultId: string }) => void) => {
     const listener = (_e: unknown, payload: { type: string; path: string; vaultId: string }) =>
       cb(payload)
